@@ -112,7 +112,7 @@ app_config = AppConfig()
 
 # Validation
 def validate_config():
-    """Validate critical configuration settings"""
+    """Validate critical configuration settings with enhanced security checks"""
     required_vars = {
         'MONGO_URL': db_config.MONGO_URL,
         'OPENAI_API_KEY': openai_config.API_KEY,
@@ -120,15 +120,41 @@ def validate_config():
     }
     
     missing_vars = []
+    security_issues = []
+    
     for var_name, var_value in required_vars.items():
-        if not var_value or var_value.startswith('sk-placeholder') or 'change-this' in var_value:
+        if not var_value:
+            missing_vars.append(var_name)
+        elif var_value.startswith('sk-placeholder') or 'change-this' in var_value:
             missing_vars.append(var_name)
     
-    if missing_vars:
-        print(f"⚠️  Warning: Missing or placeholder values for: {', '.join(missing_vars)}")
-        print("🔧 Please update these in your .env file for production use")
+    # Enhanced JWT Secret Key Security Validation
+    jwt_secret = auth_config.SECRET_KEY
+    if jwt_secret:
+        if len(jwt_secret) < auth_config.MIN_SECRET_KEY_LENGTH:
+            security_issues.append(f"JWT_SECRET_KEY too short (minimum {auth_config.MIN_SECRET_KEY_LENGTH} characters)")
+        
+        # Check for weak/common patterns
+        weak_patterns = ['secret', 'password', '123', 'abc', 'test', 'dev']
+        if any(pattern in jwt_secret.lower() for pattern in weak_patterns):
+            security_issues.append("JWT_SECRET_KEY contains weak/common patterns")
+    else:
+        # Critical: No JWT secret at all
+        missing_vars.append('JWT_SECRET_KEY (CRITICAL - Authentication will fail)')
     
-    return len(missing_vars) == 0
+    # Report issues
+    if missing_vars:
+        print(f"🚨 CRITICAL: Missing or placeholder values for: {', '.join(missing_vars)}")
+        print("🔧 Please update these in your .env file immediately!")
+    
+    if security_issues:
+        print(f"⚠️  SECURITY WARNING: {', '.join(security_issues)}")
+        print("🔐 Please generate a strong, random JWT secret key")
+    
+    if not missing_vars and not security_issues:
+        print("✅ Configuration validation passed")
+    
+    return len(missing_vars) == 0 and len(security_issues) == 0
 
 # Auto-validate on import
 if __name__ != "__main__":
