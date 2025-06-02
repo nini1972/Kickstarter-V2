@@ -141,6 +141,9 @@ app.add_middleware(
     allow_headers=server_config.CORS_HEADERS,
 )
 
+# Security Validation Middleware (processes requests before they reach routes)
+app.add_middleware(SecurityValidationMiddleware)
+
 # Health Check Endpoints
 @app.get("/api/health")
 @limiter.limit(rate_limit_config.HEALTH_CHECK_LIMIT)
