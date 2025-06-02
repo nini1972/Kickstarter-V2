@@ -115,6 +115,20 @@ class KickstarterProject(BaseModel):
             except ValueError:
                 raise ValueError('Invalid datetime format')
         return normalize_datetime(v)
+    
+    @validator('risk_level')
+    def normalize_risk_level(cls, v):
+        """Normalize risk level to lowercase"""
+        if v:
+            return v.lower()
+        return 'medium'
+    
+    @validator('status')
+    def normalize_status(cls, v):
+        """Normalize status to lowercase"""
+        if v:
+            return v.lower()
+        return 'live'
 
 class Investment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
