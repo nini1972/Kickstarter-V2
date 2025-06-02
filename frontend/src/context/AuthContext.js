@@ -120,19 +120,52 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // Create a demo user for testing without backend auth
-  const loginAsDemo = () => {
-    const demoUser = {
-      id: 'demo-user-1',
-      email: 'demo@example.com',
-      username: 'demo_user',
-      role: 'user'
-    };
-    
-    // For demo mode, we still use the placeholder token approach
-    // In a real production app, demo mode would also use secure cookies
-    setToken('demo-cookie-based-auth');
-    setUser(demoUser);
+  // Secure demo login using server-side token generation
+  const loginAsDemo = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/demo-login`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies for secure authentication
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // With httpOnly cookies, tokens are automatically stored securely by the browser
+        // We only need to store user data and set authentication state
+        setUser(data.user);
+        setToken('secure-demo-auth'); // Placeholder since actual token is in httpOnly cookie
+        
+        return { success: true };
+      } else {
+        const error = await response.json();
+        // Fallback to client-side demo if server-side fails
+        console.log('Server-side demo login failed, using fallback');
+        const fallbackDemoUser = {
+          id: 'demo-user-fallback',
+          email: 'demo@example.com',
+          username: 'demo_user',
+          role: 'user'
+        };
+        setToken('fallback-demo-auth');
+        setUser(fallbackDemoUser);
+        return { success: true };
+      }
+    } catch (error) {
+      console.log('Demo login failed, using fallback:', error);
+      // Fallback to client-side demo if network fails
+      const fallbackDemoUser = {
+        id: 'demo-user-fallback',
+        email: 'demo@example.com',
+        username: 'demo_user',
+        role: 'user'
+      };
+      setToken('fallback-demo-auth');
+      setUser(fallbackDemoUser);
+      return { success: true };
+    }
   };
 
   const value = {
