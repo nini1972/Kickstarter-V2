@@ -1061,37 +1061,54 @@ async def get_ai_recommendations(request: Request):
     except Exception as e:
         return {"recommendations": ["Unable to generate recommendations at this time"], "error": str(e)}
 
-@api_router.get("/alerts", response_model=List[ProjectAlert])
-async def get_smart_alerts():
-    """Get smart alerts for promising projects"""
+@api_router.get("/alerts")
+@limiter.limit("50/minute")  # Allow 50 alert requests per minute
+async def get_alerts(request: Request):
+    """Get smart investment alerts using enhanced alert system"""
     try:
-        # Get default alert settings (in a real app, this would be user-specific)
-        default_settings = AlertSettings()
+        # Get all projects for alert analysis
+        projects_cursor = db.projects.find({})
+        projects_list = await projects_cursor.to_list(length=None)
         
-        # Get active projects
-        projects = await db.projects.find({"status": "live"}).to_list(100)
+        if not projects_list:
+            return {
+                "alerts": [],
+                "summary": {
+                    "total_alerts": 0,
+                    "high_priority": 0,
+                    "medium_priority": 0,
+                    "low_priority": 0
+                },
+                "message": "No projects available for alert analysis"
+            }
         
-        all_alerts = []
-        # Convert projects to list of dicts for enhanced alerts system
-        project_dicts = [project for project in projects]
-        alerts = await enhanced_smart_alerts_system(project_dicts)
+        # Generate enhanced smart alerts
+        alerts = await enhanced_smart_alerts_system(projects_list)
         
-        # Convert dict alerts to ProjectAlert objects
-        project_alerts = []
+        # Calculate summary statistics
+        priority_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for alert in alerts:
-            project_alerts.append(ProjectAlert(
-                id=alert["id"],
-                project_id=alert["project_id"],
-                alert_type=alert["alert_type"],
-                message=alert["message"],
-                priority=alert["priority"].lower(),
-                created_at=datetime.fromisoformat(alert["created_at"])
-            ))
+            priority_counts[alert.get("priority", "LOW")] += 1
         
-        return project_alerts[:10]  # Return top 10 alerts
+        summary = {
+            "total_alerts": len(alerts),
+            "high_priority": priority_counts["HIGH"],
+            "medium_priority": priority_counts["MEDIUM"],
+            "low_priority": priority_counts["LOW"],
+            "generated_at": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"✅ Generated {len(alerts)} enhanced smart alerts")
+        
+        return {
+            "alerts": alerts,
+            "summary": summary,
+            "alert_system": "enhanced_v2.0"
+        }
+        
     except Exception as e:
-        logging.error(f"Failed to generate alerts: {e}")
-        return []
+        logger.error(f"Failed to get enhanced alerts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/analytics/advanced", response_model=AnalyticsData)
 async def get_advanced_analytics():
