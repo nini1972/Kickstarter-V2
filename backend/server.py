@@ -434,7 +434,7 @@ async def analyze_project_with_ai(project: KickstarterProject) -> Dict[str, Any]
         """
         
         # Make API call to OpenAI
-        response = openai.ChatCompletion.create(
+        response = await openai_client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are an expert investment analyst specializing in crowdfunding projects. Provide detailed, objective analysis in JSON format."},
