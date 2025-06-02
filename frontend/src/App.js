@@ -135,10 +135,12 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AppProvider>
-          <AppContent />
-          <ReactQueryDevtools initialIsOpen={false} />
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <AppContent />
+            <ReactQueryDevtools initialIsOpen={false} />
+          </AppProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
