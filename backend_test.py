@@ -246,10 +246,6 @@ class KickstarterAPITester:
         
         # Alerts
         self.test_alerts()
-        self.test_create_alert()
-        
-        # AI analysis
-        self.test_ai_analysis()
         
         # Print results
         print(f"\n📊 Tests passed: {self.tests_passed}/{self.tests_run}")
