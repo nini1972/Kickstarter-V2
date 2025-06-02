@@ -742,10 +742,16 @@ async def health_check():
             "error": str(e)
         }
 
+class BatchAnalyzeRequest(BaseModel):
+    project_ids: Optional[List[str]] = None
+    batch_size: int = 5
+
 @api_router.post("/projects/batch-analyze")
-async def batch_analyze_projects_endpoint(project_ids: List[str] = None, batch_size: int = 5):
+async def batch_analyze_projects_endpoint(request: BatchAnalyzeRequest):
     """Analyze multiple projects using batch AI processing"""
     try:
+        project_ids = request.project_ids
+        batch_size = request.batch_size
         # If no project_ids provided, analyze all projects
         if not project_ids:
             projects_cursor = db.projects.find({})
