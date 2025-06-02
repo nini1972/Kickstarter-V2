@@ -183,11 +183,11 @@ async def health_check(request: Request):
 async def create_project(
     request: Request,
     project_data: ProjectCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Create a new project with AI analysis"""
     try:
-        project = await project_service.create_project(project_data, current_user.id)
+        project = await project_service.create_project(project_data, current_user.user_id)
         return project
     except Exception as e:
         logger.error(f"Failed to create project: {e}")
