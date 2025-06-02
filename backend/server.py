@@ -25,6 +25,11 @@ import requests
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
+# Authentication imports
+from routes.auth import auth_router
+from services.auth import get_current_user, get_current_user_optional, require_role, require_permission
+from models.auth import UserRole, TokenData
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
