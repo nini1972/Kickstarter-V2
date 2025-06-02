@@ -234,7 +234,7 @@ const InvestmentsTab = () => {
                     ${investment.amount.toString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span>{investment.investment_date ? new Date(investment.investment_date).toDateString() : 'No date'}</span>
+                    <span>{investment.investment_date ? new Date(investment.investment_date).toLocaleDateString('en-US') : 'No date'}</span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                     {investment.notes}
