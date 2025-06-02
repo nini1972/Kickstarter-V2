@@ -59,6 +59,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# IMPORTANT: Apply limiter to the router as well
+api_router.state = app.state
+
 # Configuration constants
 MAX_PROJECTS_LIMIT = 1000
 DEFAULT_PAGE_SIZE = 50
