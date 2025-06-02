@@ -75,6 +75,7 @@ project_service: Optional[ProjectService] = None
 investment_service: Optional[InvestmentService] = None  
 alert_service: Optional[AlertService] = None
 analytics_service = None
+db_optimization_service = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
