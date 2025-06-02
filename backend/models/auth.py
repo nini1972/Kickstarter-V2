@@ -43,7 +43,7 @@ class User(BaseModel):
     
     # Investment Preferences
     preferred_categories: List[str] = Field(default_factory=list)
-    risk_tolerance: Optional[str] = Field(None, regex="^(low|medium|high)$")
+    risk_tolerance: Optional[str] = Field(None, pattern="^(low|medium|high)$")
     investment_budget: Optional[float] = Field(None, ge=0)
     
     # Timestamps
