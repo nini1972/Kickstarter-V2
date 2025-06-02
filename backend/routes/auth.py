@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # Router
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Rate limiter instance
+limiter = Limiter(key_func=get_remote_address)
+
 # Database connection (will be injected)
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017/kickstarter_tracker')
 client = AsyncIOMotorClient(mongo_url)
