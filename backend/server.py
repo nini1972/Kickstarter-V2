@@ -46,8 +46,15 @@ redis_client = None
 # OpenAI client setup
 openai.api_key = os.environ.get('OPENAI_API_KEY')
 
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
+
 # Create the main app without a prefix
 app = FastAPI(title="Kickstarter Investment Tracker", version="1.0.0")
+
+# Add rate limiting support
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
