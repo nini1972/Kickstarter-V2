@@ -41,13 +41,18 @@ class OpenAIConfig:
 
 class AuthConfig:
     """JWT Authentication configuration"""
-    SECRET_KEY: str = os.environ.get('JWT_SECRET_KEY', 'your-super-secret-jwt-key-change-this-in-production-min-32-chars')
+    # SECURITY: JWT_SECRET_KEY is required and MUST be set via environment variable
+    # No default value provided to prevent accidental use of weak secrets
+    SECRET_KEY: str = os.environ.get('JWT_SECRET_KEY')
     ALGORITHM: str = os.environ.get('JWT_ALGORITHM', 'HS256')
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '30'))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.environ.get('JWT_REFRESH_TOKEN_EXPIRE_DAYS', '7'))
     RESET_TOKEN_EXPIRE_HOURS: int = int(os.environ.get('JWT_RESET_TOKEN_EXPIRE_HOURS', '1'))
     BCRYPT_ROUNDS: int = int(os.environ.get('BCRYPT_ROUNDS', '12'))
     SECURE_COOKIES: bool = os.environ.get('SECURE_COOKIES', 'False').lower() == 'true'
+    
+    # Minimum required length for JWT secret key (industry standard)
+    MIN_SECRET_KEY_LENGTH: int = 32
     COOKIE_DOMAIN: str = os.environ.get('COOKIE_DOMAIN', 'localhost')
 
 class ServerConfig:
