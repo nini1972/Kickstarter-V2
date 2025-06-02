@@ -68,12 +68,19 @@ class ServerConfig:
     CORS_HEADERS: list = ["*"]
 
 class RateLimitConfig:
-    """Rate limiting configuration"""
+    """Enhanced rate limiting configuration for security"""
     HEALTH_CHECK_LIMIT: str = os.environ.get('RATE_LIMIT_HEALTH', '30/minute')
     API_LIMIT: str = os.environ.get('RATE_LIMIT_API', '100/minute')
     AUTH_LIMIT: str = os.environ.get('RATE_LIMIT_AUTH', '5/minute')
     BATCH_LIMIT: str = os.environ.get('RATE_LIMIT_BATCH', '10/hour')
     UPLOAD_LIMIT: str = os.environ.get('RATE_LIMIT_UPLOAD', '20/hour')
+    
+    # Enhanced security rate limits
+    LOGIN_LIMIT: str = os.environ.get('RATE_LIMIT_LOGIN', '3/minute')
+    REGISTRATION_LIMIT: str = os.environ.get('RATE_LIMIT_REGISTRATION', '2/minute')
+    PASSWORD_RESET_LIMIT: str = os.environ.get('RATE_LIMIT_PASSWORD_RESET', '1/5minutes')
+    SUSPICIOUS_IP_LIMIT: str = os.environ.get('RATE_LIMIT_SUSPICIOUS_IP', '10/hour')
+    SECURITY_VIOLATION_LIMIT: str = os.environ.get('RATE_LIMIT_SECURITY_VIOLATION', '5/hour')
 
 class LoggingConfig:
     """Logging configuration"""
