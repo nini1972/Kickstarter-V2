@@ -272,9 +272,21 @@ class AnalyticsService:
             logger.error(f"❌ Failed to generate risk analytics: {e}")
             return self._get_empty_risk_analytics()
     
-    async def get_market_insights(self, user_id: Optional[str] = None) -> Dict[str, Any]:
-        """Generate market insights and opportunities"""
+    async def get_market_insights(self, user_id: Optional[str] = None, use_optimization: bool = True) -> Dict[str, Any]:
+        """Generate market insights and opportunities with optional optimization"""
         try:
+            # Use optimized streaming version if enabled
+            if use_optimization and db_optimization_service:
+                logger.info("🌍 Using optimized streaming market insights...")
+                optimized_insights = await db_optimization_service.stream_market_insights(user_id)
+                if optimized_insights:
+                    return optimized_insights
+                else:
+                    logger.warning("⚠️ Optimized market insights failed, falling back to standard method")
+            
+            # Fallback to original implementation
+            logger.info("🌍 Using standard market insights...")
+            
             # Check cache
             cache_key = f"market_insights_{user_id or 'global'}"
             cached_insights = await cache_service.get(cache_key)
