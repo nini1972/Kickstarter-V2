@@ -879,8 +879,8 @@ async def create_project(project_data: ProjectCreate):
     
     # Perform AI analysis
     ai_analysis = await analyze_project_with_ai(project)
-    project.ai_analysis = ai_analysis.model_dump()
-    project.risk_level = ai_analysis.risk_level
+    project.ai_analysis = ai_analysis
+    project.risk_level = ai_analysis.get("risk_level", "medium")
     
     # Insert into database
     result = await db.projects.insert_one(project.model_dump())
