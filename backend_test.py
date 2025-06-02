@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend Test Script for Kickstarter Investment Tracker
-Tests the Circuit Breaker Protection for External APIs
+Tests the Database Query Optimization features and Circuit Breaker Protection
 """
 
 import requests
@@ -39,6 +39,12 @@ test_results = {
         "passed_tests": 0,
         "failed_tests": 0,
         "state_transitions": []
+    },
+    "db_optimization": {
+        "total_tests": 0,
+        "passed_tests": 0,
+        "failed_tests": 0,
+        "performance_metrics": []
     }
 }
 
