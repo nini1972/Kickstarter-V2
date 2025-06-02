@@ -277,7 +277,7 @@ const ProjectsTab = () => {
                   <div className="flex flex-col items-end">
                     <p className="text-sm text-gray-500">Deadline</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {format(new Date(project.deadline), 'MMM dd, yyyy')}
+                      {new Date(project.deadline).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
                     </p>
                     <div className="mt-1 flex items-center space-x-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
