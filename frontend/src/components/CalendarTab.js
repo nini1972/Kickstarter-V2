@@ -111,7 +111,7 @@ const CalendarTab = () => {
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b">
         <h2 className="text-lg font-semibold text-gray-900">
-          {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          {selectedDate.getFullYear()} {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedDate.getMonth()]}
         </h2>
         <div className="flex space-x-2">
           <button
