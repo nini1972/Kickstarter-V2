@@ -26,10 +26,14 @@ class TestProjectModels:
     
     def test_project_create_valid_data(self, sample_project_data):
         """Test creating a project with valid data"""
-        project = ProjectCreate(**sample_project_data)
-        assert project.name == sample_project_data["name"]
-        assert project.category == sample_project_data["category"]
-        assert project.risk_level in ["low", "medium", "high"]
+        # Remove risk_level for ProjectCreate as it's not in that model
+        test_data = sample_project_data.copy()
+        test_data.pop('risk_level', None)
+        
+        project = ProjectCreate(**test_data)
+        assert project.name == test_data["name"]
+        assert project.category == test_data["category"]
+        assert project.status == "live"  # Default status
     
     def test_project_create_invalid_risk_level(self, sample_project_data):
         """Test validation fails with invalid risk level"""
