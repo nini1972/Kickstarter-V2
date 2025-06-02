@@ -410,7 +410,7 @@ async def analyze_project_with_ai(project: KickstarterProject) -> Dict[str, Any]
         logger.info(f"🤖 Performing AI analysis for project: {project.name}")
         
         # Calculate funding percentage
-        funding_percentage = (project.current_amount / project.goal_amount * 100) if project.goal_amount > 0 else 0
+        funding_percentage = (project.pledged_amount / project.goal_amount * 100) if project.goal_amount > 0 else 0
         
         # Calculate days remaining
         days_remaining = (project.deadline - datetime.utcnow()).days if project.deadline > datetime.utcnow() else 0
@@ -426,7 +426,7 @@ async def analyze_project_with_ai(project: KickstarterProject) -> Dict[str, Any]
         
         Financial Data:
         - Goal: ${project.goal_amount:,}
-        - Raised: ${project.current_amount:,}
+        - Raised: ${project.pledged_amount:,}
         - Funding: {funding_percentage:.1f}%
         - Days Remaining: {days_remaining}
         - Backers: {project.backers_count}
