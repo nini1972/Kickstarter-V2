@@ -13,7 +13,8 @@ const createAuthHeaders = () => {
     'Content-Type': 'application/json',
   };
   
-  if (token && token !== 'demo-token-for-testing') {
+  if (token) {
+    // Always include Authorization header, even for demo token
     headers.Authorization = `Bearer ${token}`;
   }
   
