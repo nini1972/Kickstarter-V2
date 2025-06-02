@@ -661,22 +661,31 @@ async def get_project(project_id: str):
 
 @api_router.put("/projects/{project_id}", response_model=KickstarterProject)
 async def update_project(project_id: str, project_data: ProjectCreate):
-    existing_project = await db.projects.find_one({'id': project_id})
-    if not existing_project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    # Update project
-    updated_project = KickstarterProject(**project_data.model_dump())
-    updated_project.id = project_id
-    updated_project.updated_at = get_utc_now()
-    
-    # Re-analyze with AI
-    ai_analysis = await analyze_project_with_ai(updated_project)
-    updated_project.ai_analysis = ai_analysis.model_dump()
-    updated_project.risk_level = ai_analysis.risk_level
-    
-    await db.projects.replace_one({'id': project_id}, updated_project.model_dump())
-    return updated_project
+    """Update an existing project and invalidate its cache"""
+    try:
+        # Convert to dict and add metadata
+        update_data = project_data.model_dump()
+        update_data["updated_at"] = datetime.utcnow()
+        
+        result = await db.projects.update_one(
+            {"id": project_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Invalidate cache for this project
+        await invalidate_project_cache(project_id)
+        logger.info(f"🗑️ Cache invalidated for updated project {project_id}")
+        
+        # Get updated project
+        updated_project = await db.projects.find_one({"id": project_id})
+        return updated_project
+        
+    except Exception as e:
+        logger.error(f"Error updating project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str):
