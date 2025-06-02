@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/register`, {
         method: 'POST',
+        credentials: 'include', // Include cookies for consistency
         headers: {
           'Content-Type': 'application/json',
         },
@@ -99,11 +100,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Call logout endpoint to clear httpOnly cookies on server side
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies for logout
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.log('Logout API call failed:', error);
+      // Continue with client-side cleanup even if server call fails
+    }
+    
+    // Clear client-side state
     setToken(null);
     setUser(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
   };
 
   // Create a demo user for testing without backend auth
