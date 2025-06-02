@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Header = ({ onAddProject, onAddInvestment, onShowAlertSettings }) => {
   const { alerts } = useAppContext();
+  const { user, logout } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
