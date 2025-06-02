@@ -48,7 +48,11 @@ test_results = {
     "total_tests": 0,
     "passed_tests": 0,
     "failed_tests": 0,
-    "skipped_tests": 0
+    "skipped_tests": 0,
+    "cache_stats": {
+        "hits": 0,
+        "misses": 0
+    }
 }
 
 def log_test_result(test_name, passed, message=""):
