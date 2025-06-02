@@ -539,6 +539,12 @@ async def get_recommendations(
         logger.error(f"Failed to get recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Security Middleware - ADD BEFORE ROUTES
+from middleware.security_validation import SecurityValidationMiddleware
+
+# Add security validation middleware (process requests before they reach routes)
+app.add_middleware(SecurityValidationMiddleware)
+
 # Include authentication routes
 app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 
