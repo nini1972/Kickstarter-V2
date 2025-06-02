@@ -197,7 +197,7 @@ class AnalyticsService:
                     "1_year": round(current_roi + (weighted_success - 50) * 0.4, 2),
                     "2_year": round(current_roi * 1.5 + (weighted_success - 50) * 0.8, 2)
                 },
-                "confidence_level": self._calculate_prediction_confidence(investments, weighted_success),
+                "confidence_level": "medium" if investments else "low",
                 "factors": {
                     "portfolio_diversification": self._calculate_diversification_factor(investments),
                     "market_sentiment": 0.65,  # Could be enhanced with real market data
