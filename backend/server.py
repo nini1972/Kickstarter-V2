@@ -53,8 +53,8 @@ from routes.auth import auth_router
 
 # Setup logging
 logging.basicConfig(
-    level=getattr(logging, app_config.LOGGING_CONFIG.LEVEL),
-    format=app_config.LOGGING_CONFIG.FORMAT
+    level=getattr(logging, logging_config.LEVEL),
+    format=logging_config.FORMAT
 )
 logger = logging.getLogger(__name__)
 
