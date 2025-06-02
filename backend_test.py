@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Backend Test Script for Kickstarter Investment Tracker
+Tests the modular backend architecture and API endpoints
+"""
+
 import requests
 import json
 import time
@@ -18,8 +23,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backend_test")
 
-# Backend API URL from environment
-BACKEND_URL = "https://d912fcb5-ed95-465d-b2ca-71ab01b8d494.preview.emergentagent.com/api"
+# Backend API URL
+BACKEND_URL = "http://localhost:8001/api"
 
 # Test data
 test_project = {
