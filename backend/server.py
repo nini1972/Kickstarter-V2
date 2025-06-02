@@ -1281,6 +1281,183 @@ async def create_database_indexes():
         logger.error(f"❌ Failed to create database indexes: {e}")
         # Don't fail startup if indexes fail, just log the error
 
+async def enhanced_smart_alerts_system(projects: List[Dict]) -> List[Dict[str, Any]]:
+    """Enhanced smart alerts system with improved filtering and priority management"""
+    try:
+        logger.info("🚨 Running enhanced smart alerts analysis...")
+        
+        alerts = []
+        current_time = datetime.utcnow()
+        
+        for project in projects:
+            try:
+                # Parse project data
+                deadline = datetime.fromisoformat(project['deadline'].replace('Z', '+00:00'))
+                funding_percentage = (project.get('pledged_amount', 0) / project.get('goal_amount', 1)) * 100
+                days_remaining = (deadline - current_time).days
+                
+                # Get AI analysis for risk assessment
+                ai_analysis = project.get('ai_analysis', {})
+                success_probability = ai_analysis.get('success_probability', 50)
+                risk_level = ai_analysis.get('risk_level', 'Medium')
+                
+                # Enhanced Alert Criteria with Priority Scoring
+                alert_score = 0
+                alert_reasons = []
+                
+                # 1. Funding Velocity Analysis (High Priority)
+                if funding_percentage > 75 and days_remaining > 5:
+                    alert_score += 30
+                    alert_reasons.append("🔥 Strong funding momentum with time remaining")
+                
+                # 2. Success Probability Assessment (High Priority) 
+                if success_probability > 80:
+                    alert_score += 25
+                    alert_reasons.append(f"🎯 High success probability ({success_probability}%)")
+                elif success_probability > 70:
+                    alert_score += 15
+                    alert_reasons.append(f"📈 Good success probability ({success_probability}%)")
+                
+                # 3. Risk Level Analysis (Medium Priority)
+                if risk_level == "Low":
+                    alert_score += 20
+                    alert_reasons.append("🛡️ Low risk investment")
+                elif risk_level == "Medium" and success_probability > 65:
+                    alert_score += 10
+                    alert_reasons.append("⚖️ Balanced risk with good potential")
+                
+                # 4. Deadline Urgency (Medium Priority)
+                if days_remaining <= 7 and funding_percentage >= 60:
+                    alert_score += 15
+                    alert_reasons.append(f"⏰ Final week with {funding_percentage:.1f}% funded")
+                elif days_remaining <= 3 and funding_percentage >= 40:
+                    alert_score += 20
+                    alert_reasons.append(f"🚨 Critical deadline in {days_remaining} days")
+                
+                # 5. Category Performance (Low Priority)
+                high_performing_categories = ["Technology", "Design", "Games", "Innovation"]
+                if project.get('category') in high_performing_categories:
+                    alert_score += 5
+                    alert_reasons.append(f"🏆 Strong category: {project.get('category')}")
+                
+                # 6. Funding Pattern Analysis (Medium Priority)
+                if funding_percentage < 30 and days_remaining <= 10:
+                    # Potential concern - reduce score
+                    alert_score -= 10
+                    alert_reasons.append("⚠️ Low funding with approaching deadline")
+                elif funding_percentage > 100:
+                    alert_score += 15
+                    alert_reasons.append("🎉 Successfully funded - potential overfunding")
+                
+                # Generate alert if score meets threshold
+                if alert_score >= 25:  # Minimum threshold for alerts
+                    
+                    # Determine priority based on score
+                    if alert_score >= 50:
+                        priority = "HIGH"
+                        priority_emoji = "🔴"
+                    elif alert_score >= 35:
+                        priority = "MEDIUM"
+                        priority_emoji = "🟡"
+                    else:
+                        priority = "LOW"
+                        priority_emoji = "🟢"
+                    
+                    alert = {
+                        "id": str(uuid.uuid4())[:8],
+                        "project_id": project.get('id'),
+                        "project_name": project.get('name'),
+                        "alert_type": "investment_opportunity",
+                        "priority": priority,
+                        "priority_emoji": priority_emoji,
+                        "alert_score": alert_score,
+                        "title": f"{priority_emoji} {priority} Priority Investment Opportunity",
+                        "message": f"Project '{project.get('name')}' shows strong investment potential",
+                        "reasons": alert_reasons,
+                        "metrics": {
+                            "funding_percentage": round(funding_percentage, 1),
+                            "days_remaining": days_remaining,
+                            "success_probability": success_probability,
+                            "risk_level": risk_level,
+                            "goal_amount": project.get('goal_amount', 0),
+                            "pledged_amount": project.get('pledged_amount', 0)
+                        },
+                        "created_at": current_time.isoformat(),
+                        "expires_at": (current_time + timedelta(hours=24)).isoformat(),
+                        "action_items": generate_action_items(project, alert_score),
+                        "confidence_level": calculate_confidence_level(ai_analysis, funding_percentage)
+                    }
+                    
+                    alerts.append(alert)
+                    
+            except Exception as e:
+                logger.error(f"Error processing project for alerts: {e}")
+                continue
+        
+        # Sort alerts by priority and score
+        priority_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+        alerts.sort(key=lambda x: (priority_order.get(x["priority"], 0), x["alert_score"]), reverse=True)
+        
+        logger.info(f"✅ Enhanced alerts analysis completed: {len(alerts)} alerts generated")
+        return alerts[:10]  # Return top 10 alerts
+        
+    except Exception as e:
+        logger.error(f"❌ Enhanced smart alerts system failed: {e}")
+        return []
+
+def generate_action_items(project: Dict, alert_score: int) -> List[str]:
+    """Generate actionable recommendations based on project analysis"""
+    actions = []
+    
+    funding_percentage = (project.get('pledged_amount', 0) / project.get('goal_amount', 1)) * 100
+    days_remaining = (datetime.fromisoformat(project['deadline'].replace('Z', '+00:00')) - datetime.utcnow()).days
+    
+    if alert_score >= 50:
+        actions.append("🎯 Consider immediate investment evaluation")
+        actions.append("📊 Review detailed project analytics")
+    
+    if funding_percentage > 90:
+        actions.append("⚡ Act quickly - project nearly funded")
+    elif funding_percentage < 50 and days_remaining <= 10:
+        actions.append("⚠️ Monitor closely - uncertain funding trajectory")
+    
+    if days_remaining <= 3:
+        actions.append("🚨 Urgent: Final days remaining")
+    
+    actions.append("🔍 Check creator's track record")
+    actions.append("💼 Assess investment portfolio fit")
+    
+    return actions
+
+def calculate_confidence_level(ai_analysis: Dict, funding_percentage: float) -> str:
+    """Calculate confidence level for the alert"""
+    confidence_score = 0
+    
+    # AI analysis confidence
+    if ai_analysis.get('success_probability', 0) > 80:
+        confidence_score += 30
+    elif ai_analysis.get('success_probability', 0) > 60:
+        confidence_score += 20
+    
+    # Funding trajectory confidence
+    if funding_percentage > 75:
+        confidence_score += 25
+    elif funding_percentage > 50:
+        confidence_score += 15
+    
+    # Risk level confidence
+    if ai_analysis.get('risk_level') == "Low":
+        confidence_score += 20
+    elif ai_analysis.get('risk_level') == "Medium":
+        confidence_score += 10
+    
+    if confidence_score >= 60:
+        return "HIGH"
+    elif confidence_score >= 40:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
