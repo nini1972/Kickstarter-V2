@@ -497,17 +497,380 @@ class AnalyticsService:
             "investment_gaps": []
         }
     
-    # Additional helper methods would be implemented here for:
-    # - _calculate_prediction_confidence
-    # - _calculate_diversification_factor
-    # - _calculate_historical_performance
-    # - _generate_roi_recommendations
-    # - _calculate_overall_risk_score
-    # - _calculate_risk_distribution
-    # - _calculate_concentration_risk
-    # - etc.
+    # Additional helper methods implementation for comprehensive analytics
     
-    # For brevity, I'm providing placeholder implementations
+    async def _calculate_overall_risk_score(self, investments: List[Investment], projects: List[KickstarterProject]) -> float:
+        """Calculate overall portfolio risk score (0-100)"""
+        try:
+            if not investments and not projects:
+                return 50.0  # Neutral risk for empty portfolio
+            
+            risk_factors = []
+            
+            # Investment risk factors
+            if investments:
+                # Concentration risk
+                total_invested = sum(inv.amount for inv in investments)
+                if total_invested > 0:
+                    concentrations = {}
+                    for inv in investments:
+                        concentrations[inv.project_id] = concentrations.get(inv.project_id, 0) + inv.amount
+                    
+                    max_concentration = max(concentrations.values()) / total_invested
+                    concentration_risk = min(max_concentration * 100, 100)
+                    risk_factors.append(concentration_risk)
+                
+                # Delivery risk
+                pending_deliveries = sum(1 for inv in investments if inv.delivery_status == "pending")
+                delivery_risk = (pending_deliveries / len(investments)) * 50 if investments else 0
+                risk_factors.append(delivery_risk)
+            
+            # Project risk factors
+            if projects:
+                # Risk level distribution
+                risk_levels = [p.risk_level for p in projects]
+                high_risk_count = sum(1 for r in risk_levels if r == "high")
+                medium_risk_count = sum(1 for r in risk_levels if r == "medium")
+                
+                risk_score = (high_risk_count * 80 + medium_risk_count * 50) / len(projects)
+                risk_factors.append(risk_score)
+                
+                # Funding status risk
+                failing_projects = sum(1 for p in projects if p.funding_percentage() < 50 and p.days_remaining() < 10)
+                funding_risk = (failing_projects / len(projects)) * 70 if projects else 0
+                risk_factors.append(funding_risk)
+            
+            # Calculate weighted average
+            overall_risk = sum(risk_factors) / len(risk_factors) if risk_factors else 50.0
+            return round(min(max(overall_risk, 0), 100), 1)
+            
+        except Exception as e:
+            logger.error(f"Risk score calculation failed: {e}")
+            return 50.0
+    
+    def _calculate_risk_distribution(self, investments: List[Investment], projects: List[KickstarterProject]) -> Dict[str, float]:
+        """Calculate risk distribution across different categories"""
+        try:
+            distribution = {"low": 0, "medium": 0, "high": 0}
+            
+            if projects:
+                for project in projects:
+                    risk_level = project.risk_level.lower()
+                    if risk_level in distribution:
+                        distribution[risk_level] += 1
+                
+                # Convert to percentages
+                total = sum(distribution.values())
+                if total > 0:
+                    distribution = {k: round((v / total) * 100, 1) for k, v in distribution.items()}
+            
+            return distribution
+            
+        except Exception as e:
+            logger.error(f"Risk distribution calculation failed: {e}")
+            return {"low": 33.3, "medium": 33.3, "high": 33.3}
+    
+    def _calculate_concentration_risk(self, investments: List[Investment]) -> float:
+        """Calculate portfolio concentration risk (0-1)"""
+        try:
+            if not investments:
+                return 0.0
+            
+            total_invested = sum(inv.amount for inv in investments)
+            if total_invested == 0:
+                return 0.0
+            
+            # Calculate Herfindahl-Hirschman Index for concentration
+            project_concentrations = {}
+            for inv in investments:
+                project_concentrations[inv.project_id] = project_concentrations.get(inv.project_id, 0) + inv.amount
+            
+            hhi = sum((amount / total_invested) ** 2 for amount in project_concentrations.values())
+            
+            # Convert HHI to risk score (higher HHI = higher concentration = higher risk)
+            return round(min(hhi, 1.0), 3)
+            
+        except Exception as e:
+            logger.error(f"Concentration risk calculation failed: {e}")
+            return 0.5
+    
+    def _calculate_market_risk(self, projects: List[KickstarterProject]) -> float:
+        """Calculate market risk based on project portfolio"""
+        try:
+            if not projects:
+                return 50.0
+            
+            # Category diversity (lower diversity = higher market risk)
+            categories = set(p.category for p in projects)
+            category_diversity = min(len(categories) / 5, 1.0)  # Normalize to max 5 categories
+            
+            # Time diversity (all projects ending around same time = higher risk)
+            end_dates = [p.deadline for p in projects if p.deadline]
+            if len(end_dates) > 1:
+                date_spread = (max(end_dates) - min(end_dates)).days
+                time_diversity = min(date_spread / 365, 1.0)  # Normalize to 1 year
+            else:
+                time_diversity = 0.0
+            
+            # Success probability average
+            success_probs = [p.ai_analysis.get("success_probability", 50) for p in projects if p.ai_analysis]
+            avg_success = sum(success_probs) / len(success_probs) if success_probs else 50
+            
+            # Calculate market risk (inverse of positive factors)
+            market_risk = 100 - (category_diversity * 30 + time_diversity * 20 + (avg_success / 100) * 50)
+            return round(max(min(market_risk, 100), 0), 1)
+            
+        except Exception as e:
+            logger.error(f"Market risk calculation failed: {e}")
+            return 50.0
+    
+    def _calculate_liquidity_risk(self, investments: List[Investment]) -> float:
+        """Calculate liquidity risk of portfolio"""
+        try:
+            if not investments:
+                return 0.0
+            
+            # Factors affecting liquidity:
+            # 1. Delivery status (delivered = more liquid)
+            # 2. Investment age (older = potentially more liquid)
+            # 3. Project success (successful = more liquid)
+            
+            liquidity_scores = []
+            
+            for inv in investments:
+                score = 0
+                
+                # Delivery status impact
+                if inv.delivery_status == "delivered":
+                    score += 40
+                elif inv.delivery_status == "in_production":
+                    score += 20
+                elif inv.delivery_status == "pending":
+                    score += 5
+                
+                # Investment age impact (older investments might be more liquid)
+                days_old = (datetime.utcnow() - inv.created_at).days
+                age_score = min(days_old / 365 * 30, 30)  # Max 30 points for 1+ year old
+                score += age_score
+                
+                # Return potential (profitable investments are more liquid)
+                if inv.is_profitable():
+                    score += 30
+                
+                liquidity_scores.append(score)
+            
+            # Average liquidity (higher score = lower risk)
+            avg_liquidity = sum(liquidity_scores) / len(liquidity_scores)
+            liquidity_risk = 100 - avg_liquidity  # Invert to get risk
+            
+            return round(max(min(liquidity_risk, 100), 0), 1)
+            
+        except Exception as e:
+            logger.error(f"Liquidity risk calculation failed: {e}")
+            return 50.0
+    
+    async def _calculate_diversification_score(self, investments: List[Investment]) -> float:
+        """Calculate diversification score (0-1)"""
+        try:
+            if not investments:
+                return 0.0
+            
+            # Get project details for invested projects
+            project_ids = list(set(inv.project_id for inv in investments))
+            projects_data = await self.projects_collection.find(
+                {"id": {"$in": project_ids}},
+                {"id": 1, "category": 1, "deadline": 1}
+            ).to_list(length=None)
+            
+            project_details = {p["id"]: p for p in projects_data}
+            
+            # Calculate diversification across multiple dimensions
+            
+            # 1. Project count diversity
+            project_count_score = min(len(project_ids) / 10, 1.0)  # Max at 10 projects
+            
+            # 2. Category diversity
+            categories = set()
+            for inv in investments:
+                project = project_details.get(inv.project_id, {})
+                if "category" in project:
+                    categories.add(project["category"])
+            
+            category_score = min(len(categories) / 5, 1.0)  # Max at 5 categories
+            
+            # 3. Investment amount diversity (prevent over-concentration)
+            amounts = [inv.amount for inv in investments]
+            total_amount = sum(amounts)
+            if total_amount > 0:
+                # Calculate coefficient of variation (lower = more diverse)
+                mean_amount = total_amount / len(amounts)
+                variance = sum((amount - mean_amount) ** 2 for amount in amounts) / len(amounts)
+                std_dev = variance ** 0.5
+                coeff_variation = std_dev / mean_amount if mean_amount > 0 else 0
+                amount_score = max(0, 1 - min(coeff_variation, 1))  # Invert and cap
+            else:
+                amount_score = 0
+            
+            # 4. Time diversity (investment timing)
+            investment_dates = [inv.created_at for inv in investments]
+            if len(investment_dates) > 1:
+                date_spread = (max(investment_dates) - min(investment_dates)).days
+                time_score = min(date_spread / 365, 1.0)  # Max at 1 year spread
+            else:
+                time_score = 0.0
+            
+            # Weighted average of diversification factors
+            diversification_score = (
+                project_count_score * 0.3 +
+                category_score * 0.3 +
+                amount_score * 0.2 +
+                time_score * 0.2
+            )
+            
+            return round(diversification_score, 3)
+            
+        except Exception as e:
+            logger.error(f"Diversification score calculation failed: {e}")
+            return 0.0
+    
+    async def _generate_risk_recommendations(self, investments: List[Investment], projects: List[KickstarterProject]) -> List[str]:
+        """Generate risk management recommendations"""
+        try:
+            recommendations = []
+            
+            if not investments and not projects:
+                return ["Start building your investment portfolio to receive risk analysis"]
+            
+            # Check concentration risk
+            concentration_risk = self._calculate_concentration_risk(investments)
+            if concentration_risk > 0.5:
+                recommendations.append("Consider diversifying across more projects to reduce concentration risk")
+            
+            # Check category diversity
+            if investments:
+                project_ids = [inv.project_id for inv in investments]
+                projects_data = await self.projects_collection.find(
+                    {"id": {"$in": project_ids}},
+                    {"category": 1}
+                ).to_list(length=None)
+                
+                categories = set(p.get("category") for p in projects_data if p.get("category"))
+                if len(categories) < 3:
+                    recommendations.append("Diversify across different project categories to reduce market risk")
+            
+            # Check high-risk project exposure
+            if projects:
+                high_risk_projects = sum(1 for p in projects if p.risk_level == "high")
+                if high_risk_projects / len(projects) > 0.3:
+                    recommendations.append("Consider reducing exposure to high-risk projects")
+            
+            # Check delivery status
+            if investments:
+                pending_deliveries = sum(1 for inv in investments if inv.delivery_status == "pending")
+                if pending_deliveries / len(investments) > 0.5:
+                    recommendations.append("Monitor pending deliveries and consider following up with creators")
+            
+            # General recommendations
+            if len(investments) < 5:
+                recommendations.append("Consider increasing portfolio size for better risk distribution")
+            
+            if not recommendations:
+                recommendations.append("Your portfolio shows good risk management - keep monitoring and adjusting")
+            
+            return recommendations[:5]  # Limit to top 5 recommendations
+            
+        except Exception as e:
+            logger.error(f"Risk recommendations generation failed: {e}")
+            return ["Unable to generate risk recommendations at this time"]
+    
+    async def _calculate_risk_trends(self, investments: List[Investment]) -> List[Dict[str, Any]]:
+        """Calculate risk trends over time"""
+        try:
+            if not investments:
+                return []
+            
+            # Group investments by month
+            monthly_risk = {}
+            
+            for inv in investments:
+                month_key = inv.created_at.strftime("%Y-%m")
+                if month_key not in monthly_risk:
+                    monthly_risk[month_key] = {"investments": [], "risk_score": 0}
+                monthly_risk[month_key]["investments"].append(inv)
+            
+            # Calculate risk score for each month
+            trends = []
+            for month, data in sorted(monthly_risk.items()):
+                month_investments = data["investments"]
+                
+                # Simple risk calculation based on average amounts and delivery status
+                avg_amount = sum(inv.amount for inv in month_investments) / len(month_investments)
+                pending_ratio = sum(1 for inv in month_investments if inv.delivery_status == "pending") / len(month_investments)
+                
+                risk_score = (avg_amount / 1000 * 30 + pending_ratio * 70)  # Risk increases with amount and pending deliveries
+                risk_score = min(max(risk_score, 0), 100)
+                
+                trends.append({
+                    "month": month,
+                    "risk_score": round(risk_score, 1),
+                    "investment_count": len(month_investments),
+                    "total_amount": sum(inv.amount for inv in month_investments)
+                })
+            
+            return trends[-12:]  # Return last 12 months
+            
+        except Exception as e:
+            logger.error(f"Risk trends calculation failed: {e}")
+            return []
+    
+    def _perform_stress_test(self, investments: List[Investment]) -> Dict[str, Any]:
+        """Perform portfolio stress test under various scenarios"""
+        try:
+            if not investments:
+                return {}
+            
+            total_invested = sum(inv.amount for inv in investments)
+            current_value = sum(inv.current_value or inv.amount for inv in investments)
+            
+            # Scenario 1: 20% market downturn
+            scenario_1_value = current_value * 0.8
+            scenario_1_loss = total_invested - scenario_1_value
+            
+            # Scenario 2: 50% of pending projects fail
+            pending_investments = [inv for inv in investments if inv.delivery_status == "pending"]
+            scenario_2_loss = sum(inv.amount for inv in pending_investments) * 0.5
+            scenario_2_value = current_value - scenario_2_loss
+            
+            # Scenario 3: Major project failure (largest investment fails)
+            if investments:
+                largest_investment = max(investments, key=lambda x: x.amount)
+                scenario_3_loss = largest_investment.amount
+                scenario_3_value = current_value - scenario_3_loss
+            else:
+                scenario_3_loss = 0
+                scenario_3_value = current_value
+            
+            return {
+                "market_downturn_20pct": {
+                    "portfolio_value": round(scenario_1_value, 2),
+                    "loss_amount": round(scenario_1_loss, 2),
+                    "loss_percentage": round((scenario_1_loss / total_invested * 100), 1) if total_invested > 0 else 0
+                },
+                "pending_failures_50pct": {
+                    "portfolio_value": round(scenario_2_value, 2),
+                    "loss_amount": round(scenario_2_loss, 2),
+                    "loss_percentage": round((scenario_2_loss / total_invested * 100), 1) if total_invested > 0 else 0
+                },
+                "largest_project_failure": {
+                    "portfolio_value": round(scenario_3_value, 2),
+                    "loss_amount": round(scenario_3_loss, 2),
+                    "loss_percentage": round((scenario_3_loss / total_invested * 100), 1) if total_invested > 0 else 0
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Stress test calculation failed: {e}")
+            return {}
     def _calculate_prediction_confidence(self, investments: List[Investment], weighted_success: float) -> str:
         """Calculate confidence level for predictions"""
         if len(investments) < 3:
