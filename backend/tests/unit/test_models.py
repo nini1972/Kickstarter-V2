@@ -280,13 +280,13 @@ class TestModelSerialization:
         json_data = project.model_dump()
         
         # Verify all fields are present
-        assert "title" in json_data
+        assert "name" in json_data
         assert "category" in json_data
-        assert "funding_goal" in json_data
+        assert "goal_amount" in json_data
         
         # Test deserialization
         new_project = ProjectCreate(**json_data)
-        assert new_project.title == project.title
+        assert new_project.name == project.name
         assert new_project.category == project.category
     
     def test_investment_json_serialization(self, sample_investment_data):
