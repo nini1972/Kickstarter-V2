@@ -1,53 +1,99 @@
-import { useEffect } from "react";
-import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { AppProvider } from './context/AppContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import Header from './components/Header';
+import Navigation from './components/Navigation';
+import Dashboard from './components/Dashboard';
+import ProjectsTab from './components/ProjectsTab';
+import InvestmentsTab from './components/InvestmentsTab';
+import AlertsTab from './components/AlertsTab';
+import AnalyticsTab from './components/AnalyticsTab';
+import CalendarTab from './components/CalendarTab';
+import AIInsightsTab from './components/AIInsightsTab';
+import AddProjectModal from './components/modals/AddProjectModal';
+import AddInvestmentModal from './components/modals/AddInvestmentModal';
+import AlertSettingsModal from './components/modals/AlertSettingsModal';
+import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function AppContent() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [showAddInvestment, setShowAddInvestment] = useState(false);
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'projects':
+        return <ProjectsTab />;
+      case 'investments':
+        return <InvestmentsTab />;
+      case 'alerts':
+        return <AlertsTab />;
+      case 'analytics':
+        return <AnalyticsTab />;
+      case 'calendar':
+        return <CalendarTab />;
+      case 'ai-insights':
+        return <AIInsightsTab />;
+      default:
+        return <Dashboard />;
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
+      
+      <Header 
+        onAddProject={() => setShowAddProject(true)}
+        onAddInvestment={() => setShowAddInvestment(true)}
+        onShowAlertSettings={() => setShowAlertSettings(true)}
+      />
+      
+      <Navigation 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+      />
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {renderActiveTab()}
+      </main>
+
+      {/* Modals */}
+      {showAddProject && (
+        <AddProjectModal 
+          isOpen={showAddProject}
+          onClose={() => setShowAddProject(false)}
+        />
+      )}
+
+      {showAddInvestment && (
+        <AddInvestmentModal 
+          isOpen={showAddInvestment}
+          onClose={() => setShowAddInvestment(false)}
+        />
+      )}
+
+      {showAlertSettings && (
+        <AlertSettingsModal 
+          isOpen={showAlertSettings}
+          onClose={() => setShowAlertSettings(false)}
+        />
+      )}
     </div>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 
