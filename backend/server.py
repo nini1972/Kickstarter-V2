@@ -403,7 +403,8 @@ async def health_check():
         
         # Database connectivity check
         try:
-            await db.admin.command('ping')
+            # Use client.admin.command instead of db.admin.command
+            await client.admin.command('ping')
             health_status["checks"]["database"] = {
                 "status": "healthy",
                 "response_time_ms": 0
