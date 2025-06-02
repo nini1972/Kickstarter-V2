@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 # Configuration and Core
 from config.settings import (
     app_config, server_config, db_config, redis_config, 
-    openai_config, auth_config, rate_limit_config, validate_config
+    openai_config, auth_config, rate_limit_config, logging_config, validate_config
 )
 
 # Database and Cache
