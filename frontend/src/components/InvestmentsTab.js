@@ -231,7 +231,7 @@ const InvestmentsTab = () => {
                     {investment.project_id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${investment.amount.toLocaleString()}
+                    ${investment.amount.toString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span>{new Date(investment.investment_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
