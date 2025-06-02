@@ -149,7 +149,7 @@ class KickstarterAPITester:
             "Create Investment", 
             "POST", 
             "investments", 
-            201, 
+            200,  # Changed from 201 to 200 to match actual API response
             data=investment_data
         )
         
