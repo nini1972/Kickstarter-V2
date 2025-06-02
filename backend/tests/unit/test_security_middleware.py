@@ -3,6 +3,7 @@
 Testing comprehensive security validation middleware
 """
 
+import asyncio
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from fastapi import Request, HTTPException
