@@ -195,8 +195,10 @@ async def health_check(request: Request):
         
         health_status["services"]["circuit_breakers"] = circuit_health
         
-        # Overall status
-        if db_health.get("status") != "healthy" or cache_health.get("status") != "healthy":
+        # Overall status - include circuit breaker status
+        if (db_health.get("status") != "healthy" or 
+            cache_health.get("status") != "healthy" or
+            circuit_health.get("status") != "healthy"):
             health_status["status"] = "degraded"
         
         return health_status
