@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 import logging
 import sys
+import random
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,26 @@ test_project = {
     "status": "live"
 }
 
+# Function to generate test projects with different data
+def generate_test_project(index):
+    categories = ["Technology", "Games", "Design", "Film", "Music", "Food"]
+    statuses = ["live", "successful", "failed"]
+    risk_levels = ["low", "medium", "high"]
+    
+    return {
+        "name": f"Test Project {index} - {uuid.uuid4()}",
+        "creator": f"Creator {index}",
+        "url": f"https://www.kickstarter.com/test-project-{index}",
+        "description": f"This is test project {index} with a detailed description that includes various features and goals. The project aims to create innovative solutions for modern problems.",
+        "category": random.choice(categories),
+        "goal_amount": random.randint(5000, 50000),
+        "pledged_amount": random.randint(1000, 60000),
+        "backers_count": random.randint(10, 500),
+        "deadline": (datetime.utcnow() + timedelta(days=random.randint(5, 60))).isoformat(),
+        "launched_date": (datetime.utcnow() - timedelta(days=random.randint(5, 30))).isoformat(),
+        "status": random.choice(statuses)
+    }
+
 test_investment = {
     "amount": 500.0,
     "investment_date": datetime.utcnow().isoformat(),
@@ -52,6 +73,12 @@ test_results = {
     "cache_stats": {
         "hits": 0,
         "misses": 0
+    },
+    "batch_processing": {
+        "total_batches": 0,
+        "successful_batches": 0,
+        "failed_batches": 0,
+        "performance_metrics": []
     }
 }
 
