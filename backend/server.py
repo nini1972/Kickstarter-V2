@@ -41,7 +41,7 @@ from models.investments import (
 )
 from models.auth import (
     User, UserCreate, UserLogin, UserResponse, UserUpdate,
-    TokenResponse, RefreshTokenRequest, PasswordResetRequest
+    Token, TokenRefresh, PasswordResetRequest
 )
 
 # Services
