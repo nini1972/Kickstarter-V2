@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("validation_test")
 
 # Backend API URL
-BACKEND_URL = "https://d912fcb5-ed95-465d-b2ca-71ab01b8d494.preview.emergentagent.com/api"
+BACKEND_URL = "https://04f2e18f-8db0-4882-9c84-f41c80a2a7a6.preview.emergentagent.com/api"
 
 def test_risk_level_case_sensitivity():
     """Test risk_level case sensitivity in project creation and update"""
