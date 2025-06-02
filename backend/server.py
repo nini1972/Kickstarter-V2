@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
         
         # Initialize business services
         database = await get_database()
-        global project_service, investment_service, alert_service, analytics_service
+        global project_service, investment_service, alert_service, analytics_service, db_optimization_service
         
         project_service = ProjectService(database)
         investment_service = InvestmentService(database)
