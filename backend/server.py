@@ -9,10 +9,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 import motor.motor_asyncio
 import redis.asyncio as redis
-from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field, validator
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from pathlib import Path
 import uuid
 import aiohttp
