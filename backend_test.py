@@ -113,6 +113,77 @@ def test_health_endpoint():
                        collections.get("status") == "healthy", 
                        f"Projects: {collections.get('projects_count')}, Investments: {collections.get('investments_count')}")
         
+        # Check Redis cache status
+        redis_status = data.get("checks", {}).get("redis_cache", {}).get("status")
+        redis_connected = redis_status == "connected"
+        
+        log_test_result("Health Check - Redis Cache", 
+                       redis_connected, 
+                       f"Redis status: {redis_status}")
+        
+        return True
+    except Exception as e:
+        log_test_result("Health Check", False, f"Error: {str(e)}")
+        return False
+
+def log_test_result(test_name, passed, message=""):
+    """Log test result and update counters"""
+    test_results["total_tests"] += 1
+    
+    if passed:
+        test_results["passed_tests"] += 1
+        logger.info(f"✅ PASS: {test_name}")
+        if message:
+            logger.info(f"   {message}")
+    else:
+        test_results["failed_tests"] += 1
+        logger.error(f"❌ FAIL: {test_name}")
+        if message:
+            logger.error(f"   {message}")
+
+def test_health_endpoint():
+    """Test the health endpoint to verify system status and indexes"""
+    try:
+        response = requests.get(f"{BACKEND_URL}/health")
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Check overall status
+        overall_status = data.get("status") == "healthy"
+        log_test_result("Health Check - Overall Status", 
+                       overall_status, 
+                       f"Status: {data.get('status')}")
+        
+        # Check database connectivity
+        db_status = data.get("checks", {}).get("database", {}).get("status") == "healthy"
+        log_test_result("Health Check - Database Connectivity", 
+                       db_status, 
+                       f"Database status: {data.get('checks', {}).get('database', {}).get('status')}")
+        
+        # Check indexes
+        indexes = data.get("checks", {}).get("indexes", {})
+        projects_indexes = indexes.get("projects_indexes", 0)
+        investments_indexes = indexes.get("investments_indexes", 0)
+        
+        # Verify expected index counts (12 for projects, 6 for investments)
+        projects_indexes_valid = projects_indexes == 12
+        investments_indexes_valid = investments_indexes == 6
+        
+        log_test_result("Health Check - Projects Indexes", 
+                       projects_indexes_valid, 
+                       f"Projects indexes: {projects_indexes}/12")
+        
+        log_test_result("Health Check - Investments Indexes", 
+                       investments_indexes_valid, 
+                       f"Investments indexes: {investments_indexes}/6")
+        
+        # Check collections
+        collections = data.get("checks", {}).get("collections", {})
+        log_test_result("Health Check - Collections", 
+                       collections.get("status") == "healthy", 
+                       f"Projects: {collections.get('projects_count')}, Investments: {collections.get('investments_count')}")
+        
         return True
     except Exception as e:
         log_test_result("Health Check", False, f"Error: {str(e)}")
