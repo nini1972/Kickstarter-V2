@@ -132,6 +132,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Make limiter available to auth routes
+auth_router.state = app.state
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
