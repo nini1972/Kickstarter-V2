@@ -65,7 +65,8 @@ class KickstarterAPITester:
             "current_funding": 0,
             "end_date": (datetime.now().isoformat().split("T")[0]),
             "risk_level": "Medium",
-            "creator": "Test Creator"
+            "creator": "Test Creator",
+            "url": "https://example.com/test-project"
         }
         
         success, response = self.run_test(
