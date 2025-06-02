@@ -591,6 +591,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "Analytics service successfully implemented with comprehensive dashboard insights, ROI predictions, risk analytics, and market insights. All endpoints are properly implemented and responding with 403 (authentication required) as expected."
+      - working: true
+        agent: "testing"
+        comment: "Comprehensive testing of the Analytics Service completed. All five endpoints (/api/analytics/dashboard, /api/analytics/funding-trends, /api/analytics/roi-predictions, /api/analytics/risk, /api/analytics/market-insights) are working correctly. The service provides sophisticated analytics including risk calculation using HHI index, market analysis, predictive ROI modeling, stress testing, and seasonal trend analysis. All endpoints properly handle empty portfolios and provide appropriate fallback data. Caching is working correctly with an average 84.54% performance improvement for cached requests."
 
   - task: "Redis Cache Implementation"
     implemented: true
