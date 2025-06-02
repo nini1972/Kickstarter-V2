@@ -1,21 +1,26 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
-import logging
-import json
-from pathlib import Path
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
-import uuid
-from datetime import datetime, timedelta, timezone
-import openai
-import aiohttp
 import asyncio
+import hashlib
+import json
+import logging
+import re
+from datetime import datetime, timedelta, timezone
+from typing import Optional, List, Dict, Any
+import motor.motor_asyncio
+import aioredis
+import openai
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel, Field, validator
+from openai import AsyncOpenAI
+from pathlib import Path
+import uuid
+import aiohttp
 from bs4 import BeautifulSoup
 import requests
-import re
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
