@@ -169,12 +169,14 @@ class KickstarterAPITester:
             print("❌ No test investment ID available")
             return False, None
         
-        return self.run_test(
+        success, response = self.run_test(
             "Get Investment by ID", 
             "GET", 
             f"investments/{self.test_investment_id}", 
             200
         )
+        
+        return success
 
     def test_dashboard_stats(self):
         """Test getting dashboard statistics"""
