@@ -50,7 +50,7 @@ from services.project_service import ProjectService
 from services.investment_service import InvestmentService
 from services.alert_service import AlertService
 from services.analytics_service import initialize_analytics_service
-from services.auth import get_current_user, verify_token, create_access_token
+from services.auth import get_current_user, jwt_service
 
 # Routes
 from routes.auth import auth_router
