@@ -182,7 +182,7 @@ const CalendarTab = () => {
                           {project.deadline ? new Date(project.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
                         </div>
                         <div className="text-xs text-gray-500">
-                          <span className="font-medium">Launched:</span> {project.launched_date ? new Date(project.launched_date).toDateString() : 'Unknown'}
+                          <span className="font-medium">Launched:</span> {project.launched_date ? new Date(project.launched_date).toLocaleDateString('en-US') : 'Unknown'}
                         </div>
                       </div>
                     </div>
