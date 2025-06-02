@@ -116,14 +116,14 @@ class KickstarterProject(BaseModel):
                 raise ValueError('Invalid datetime format')
         return normalize_datetime(v)
     
-    @validator('risk_level')
+    @validator('risk_level', pre=True)
     def normalize_risk_level(cls, v):
         """Normalize risk level to lowercase"""
         if v:
             return v.lower()
         return 'medium'
     
-    @validator('status')
+    @validator('status', pre=True)
     def normalize_status(cls, v):
         """Normalize status to lowercase"""
         if v:
