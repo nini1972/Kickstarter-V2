@@ -540,7 +540,7 @@ async def get_recommendations(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include authentication routes
-app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 
 # Root endpoint
 @app.get("/")
