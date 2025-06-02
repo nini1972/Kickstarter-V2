@@ -394,10 +394,9 @@ async def refresh_token(token_refresh: TokenRefresh, request: Request):
 async def logout_user(
     request: Request,
     response: Response,
-    current_user = Depends(get_current_user),
-    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
+    current_user = Depends(get_current_user)
 ):
-    """Logout user and invalidate tokens"""
+    """Logout user and invalidate tokens - clears secure httpOnly cookies"""
     try:
         # Invalidate all sessions for this user
         await db.user_sessions.update_many(
@@ -405,15 +404,22 @@ async def logout_user(
             {"$set": {"is_active": False}}
         )
         
-        # Clear refresh token cookie if using cookies
+        # Clear both access and refresh token cookies (secure logout)
+        response.delete_cookie(
+            key="access_token",
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api"
+        )
+        
         response.delete_cookie(
             key="refresh_token",
-            domain=jwt_service.config.COOKIE_DOMAIN
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api/auth"
         )
         
         logger.info(f"User logged out: {current_user.email}")
         
-        return {"message": "Successfully logged out"}
+        return {"message": "Successfully logged out", "cookies_cleared": True}
         
     except Exception as e:
         logger.error(f"Logout failed: {e}")
