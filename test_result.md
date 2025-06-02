@@ -330,7 +330,7 @@ backend:
     status_history:
       - working: false
         agent: "testing"
-        comment: "Project creation is failing with error: 'AttributeError: 'dict' object has no attribute 'model_dump''. This is happening in the create_project function when trying to set project.ai_analysis = ai_analysis.model_dump(). The AI analysis result is being returned as a dictionary, but the code is trying to call model_dump() on it, which is a Pydantic model method."
+        comment: "Project creation is failing with error: 'AttributeError: 'dict' object has no attribute 'model_dump''. This is happening in the create_project function (line 640) when trying to set project.ai_analysis = ai_analysis.model_dump(). The analyze_project_with_ai function returns a dictionary, but the code is trying to call model_dump() on it, which is a Pydantic model method. The fix would be to either convert the dictionary to a Pydantic model or directly assign the dictionary to project.ai_analysis."
 
 test_plan:
   current_focus:
