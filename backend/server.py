@@ -764,7 +764,8 @@ class BatchAnalyzeRequest(BaseModel):
     batch_size: int = 5
 
 @api_router.post("/projects/batch-analyze")
-async def batch_analyze_projects_endpoint(request: BatchAnalyzeRequest):
+@limiter.limit("10/hour")  # Allow only 10 batch analyses per hour (resource-intensive)
+async def batch_analyze_projects_endpoint(request: Request, request_data: BatchAnalyzeRequest):
     """Analyze multiple projects using batch AI processing"""
     try:
         project_ids = request.project_ids
