@@ -267,15 +267,6 @@ export const useInvestments = () => {
   });
 };
 
-// Investments Hooks
-export const useInvestments = () => {
-  return useQuery({
-    queryKey: queryKeys.investments,
-    queryFn: api.getInvestments,
-    staleTime: 5 * 60 * 1000,
-  });
-};
-
 export const useCreateInvestment = () => {
   const queryClient = useQueryClient();
   
