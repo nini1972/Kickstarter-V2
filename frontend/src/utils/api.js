@@ -1,5 +1,5 @@
 // API utility functions with authentication for Kickstarter Investment Tracker
-const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001/api';
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL ? `${process.env.REACT_APP_BACKEND_URL}/api` : 'http://localhost:8001/api';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
