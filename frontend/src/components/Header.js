@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowTrendingUpIcon, BellIcon, PlusIcon, BanknotesIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ArrowTrendingUpIcon, BellIcon, PlusIcon, BanknotesIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 const Header = ({ onAddProject, onAddInvestment, onShowAlertSettings }) => {
   const { alerts } = useAppContext();
