@@ -25,7 +25,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # Environment variable validation
-REQUIRED_ENV_VARS = ['MONGO_URL', 'DB_NAME', 'OPENAI_API_KEY']
+REQUIRED_ENV_VARS = ['MONGO_URL', 'OPENAI_API_KEY']
 missing_vars = [var for var in REQUIRED_ENV_VARS if not os.environ.get(var)]
 if missing_vars:
     raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
@@ -33,7 +33,7 @@ if missing_vars:
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client.get_database()
 
 # Redis connection for caching
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
