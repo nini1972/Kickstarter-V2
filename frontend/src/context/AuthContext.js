@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include', // Include cookies for secure authentication
         headers: {
           'Content-Type': 'application/json',
         },
@@ -61,11 +62,10 @@ export const AuthProvider = ({ children }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setToken(data.access_token);
+        // With httpOnly cookies, tokens are automatically stored securely by the browser
+        // We only need to store user data and set authentication state
         setUser(data.user);
-        
-        localStorage.setItem('auth_token', data.access_token);
-        localStorage.setItem('auth_user', JSON.stringify(data.user));
+        setToken('cookie-based-auth'); // Placeholder since actual token is in httpOnly cookie
         
         return { success: true };
       } else {
