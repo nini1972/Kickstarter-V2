@@ -17,15 +17,36 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token on app load
-    const storedToken = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('auth_user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // With httpOnly cookies, we can't directly access tokens from JavaScript
+    // Instead, we check if the user is authenticated by trying to fetch user profile
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/me`, {
+          method: 'GET',
+          credentials: 'include', // Include cookies in request
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          setToken('cookie-based-auth'); // Placeholder since we can't access the actual token
+        } else {
+          // User is not authenticated
+          setUser(null);
+          setToken(null);
+        }
+      } catch (error) {
+        console.log('Auth check failed:', error);
+        setUser(null);
+        setToken(null);
+      }
+      setIsLoading(false);
+    };
+
+    checkAuthentication();
   }, []);
 
   const login = async (email, password) => {
