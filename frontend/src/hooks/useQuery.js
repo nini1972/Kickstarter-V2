@@ -282,13 +282,69 @@ export const useCreateInvestment = () => {
   });
 };
 
-// Alerts Hook
+// Alerts Hooks
 export const useAlerts = () => {
   return useQuery({
     queryKey: queryKeys.alerts,
     queryFn: api.getAlerts,
     staleTime: 2 * 60 * 1000, // 2 minutes for fresher alerts
     refetchInterval: 5 * 60 * 1000, // Auto-refetch every 5 minutes
+  });
+};
+
+export const useMarkAlertAsRead = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (alertId) => {
+      const { data } = await apiClient.patch(`/alerts/${alertId}/read`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+      toast.success('Alert marked as read');
+    },
+    onError: () => {
+      toast.error('Failed to mark alert as read');
+    },
+  });
+};
+
+export const useDeleteAlert = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (alertId) => {
+      const { data } = await apiClient.delete(`/alerts/${alertId}`);
+      return data;
+    },
+    onMutate: async (alertId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.alerts });
+      
+      const previousAlerts = queryClient.getQueryData(queryKeys.alerts);
+      
+      queryClient.setQueryData(queryKeys.alerts, (old) => {
+        if (old?.alerts) {
+          return {
+            ...old,
+            alerts: old.alerts.filter(alert => alert.id !== alertId)
+          };
+        }
+        return old;
+      });
+      
+      return { previousAlerts };
+    },
+    onError: (err, alertId, context) => {
+      queryClient.setQueryData(queryKeys.alerts, context.previousAlerts);
+      toast.error('Failed to delete alert');
+    },
+    onSuccess: () => {
+      toast.success('Alert deleted successfully');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.alerts });
+    },
   });
 };
 
