@@ -121,8 +121,70 @@ class AIAnalysisService:
         except Exception as e:
             logger.error(f"Cache invalidation error: {e}")
     
+    async def _make_openai_call_with_circuit_breaker(self, prompt: str, project_name: str) -> str:
+        """Make OpenAI API call with circuit breaker protection and retry logic"""
+        if not self.openai_client:
+            raise Exception("OpenAI client not initialized")
+        
+        max_retries = 3
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    delay = self.backoff.next_delay()
+                    logger.info(f"🔄 Retrying OpenAI call for {project_name} in {delay:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    import asyncio
+                    await asyncio.sleep(delay)
+                
+                # Make API call through circuit breaker
+                response = await self.circuit_breaker.call(
+                    self._execute_openai_request,
+                    prompt
+                )
+                
+                self.backoff.reset()  # Reset backoff on success
+                return response
+                
+            except CircuitBreakerOpenError as e:
+                logger.error(f"🚨 Circuit breaker is OPEN for OpenAI API: {e}")
+                # Don't retry if circuit is open
+                raise Exception("AI service temporarily unavailable due to repeated failures")
+                
+            except CircuitBreakerTimeoutError as e:
+                logger.error(f"⏰ OpenAI API call timed out: {e}")
+                last_exception = e
+                
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI API call failed (attempt {attempt + 1}): {e}")
+                last_exception = e
+                
+                if attempt == max_retries - 1:
+                    logger.error(f"❌ All retry attempts failed for OpenAI call")
+                    break
+        
+        # All retries failed
+        if last_exception:
+            raise last_exception
+        else:
+            raise Exception("OpenAI API call failed after all retries")
+    
+    async def _execute_openai_request(self, prompt: str) -> str:
+        """Execute the actual OpenAI API request"""
+        response = await self.openai_client.chat.completions.create(
+            model=openai_config.MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert investment analyst specializing in crowdfunding projects. Provide detailed, objective analysis in JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=openai_config.TEMPERATURE,
+            max_tokens=openai_config.MAX_TOKENS
+        )
+        
+        return response.choices[0].message.content
+    
     async def analyze_project(self, project: KickstarterProject) -> Dict[str, Any]:
-        """Analyze a single project with AI"""
+        """Analyze a single project with AI and circuit breaker protection"""
         try:
             # Check cache first
             cached_result = await self.get_cached_analysis(project)
@@ -130,6 +192,7 @@ class AIAnalysisService:
                 return cached_result
             
             if not self.openai_client:
+                logger.warning("🚨 OpenAI client not available, returning fallback analysis")
                 return self._get_fallback_analysis()
             
             logger.info(f"🤖 Performing AI analysis for project: {project.name}")
@@ -141,38 +204,38 @@ class AIAnalysisService:
             # Prepare analysis prompt
             prompt = self._build_analysis_prompt(project, funding_percentage, days_remaining)
             
-            # Make API call
-            response = await self.openai_client.chat.completions.create(
-                model=openai_config.MODEL,
-                messages=[
-                    {"role": "system", "content": "You are an expert investment analyst specializing in crowdfunding projects. Provide detailed, objective analysis in JSON format."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=openai_config.TEMPERATURE,
-                max_tokens=openai_config.MAX_TOKENS
-            )
-            
-            # Parse response
-            content = response.choices[0].message.content
-            analysis = self._parse_ai_response(content, project.name)
-            
-            # Add metadata
-            analysis.update({
-                "analyzed_at": datetime.utcnow().isoformat(),
-                "funding_percentage": funding_percentage,
-                "days_remaining": days_remaining,
-                "analysis_version": "2.0",
-                "model_used": openai_config.MODEL
-            })
-            
-            # Cache result
-            await self.cache_analysis_result(project, analysis)
-            
-            logger.info(f"✅ AI analysis completed for project: {project.name}")
-            return analysis
+            # Make API call with circuit breaker protection
+            try:
+                content = await self._make_openai_call_with_circuit_breaker(prompt, project.name)
+                
+                # Parse response
+                analysis = self._parse_ai_response(content, project.name)
+                
+                # Add metadata
+                analysis.update({
+                    "analyzed_at": datetime.utcnow().isoformat(),
+                    "funding_percentage": funding_percentage,
+                    "days_remaining": days_remaining,
+                    "analysis_version": "2.1",  # Updated version with circuit breaker
+                    "model_used": openai_config.MODEL,
+                    "circuit_breaker_state": self.circuit_breaker.get_state().value
+                })
+                
+                # Cache result
+                await self.cache_analysis_result(project, analysis)
+                
+                logger.info(f"✅ AI analysis completed for project: {project.name}")
+                return analysis
+                
+            except Exception as e:
+                logger.error(f"❌ AI analysis failed for {project.name}: {e}")
+                fallback = self._get_fallback_analysis()
+                fallback["circuit_breaker_state"] = self.circuit_breaker.get_state().value
+                fallback["failure_reason"] = str(e)
+                return fallback
             
         except Exception as e:
-            logger.error(f"❌ AI analysis failed for {project.name}: {e}")
+            logger.error(f"❌ Unexpected error in analyze_project for {project.name}: {e}")
             return self._get_fallback_analysis()
     
     async def batch_analyze_projects(self, projects: List[KickstarterProject]) -> List[Dict[str, Any]]:
