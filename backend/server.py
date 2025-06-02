@@ -36,6 +36,11 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Redis connection for caching
+redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+cache_ttl = int(os.environ.get('CACHE_TTL', '3600'))  # 1 hour default
+redis_client = None
+
 # OpenAI client
 openai.api_key = os.environ['OPENAI_API_KEY']
 openai_client = openai.OpenAI(api_key=os.environ['OPENAI_API_KEY'])
