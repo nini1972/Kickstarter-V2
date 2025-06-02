@@ -1225,7 +1225,10 @@ async def get_alert_settings():
     except Exception as e:
         return AlertSettings()
 
-# Include the router in the main app
+# Include authentication routes
+app.include_router(auth_router, prefix="/api")
+
+# Include main API routes
 app.include_router(api_router)
 
 # Configure CORS - Restrict in production
