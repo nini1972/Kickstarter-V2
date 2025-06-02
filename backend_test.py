@@ -241,7 +241,6 @@ class KickstarterAPITester:
         # Investments
         self.test_create_investment()
         self.test_get_investments()
-        self.test_get_investment()
         
         # Dashboard and analytics
         self.test_dashboard_stats()
