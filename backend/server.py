@@ -727,6 +727,133 @@ async def health_check():
             "error": str(e)
         }
 
+@api_router.post("/projects/batch-analyze")
+async def batch_analyze_projects_endpoint(project_ids: List[str] = None, batch_size: int = 5):
+    """Analyze multiple projects using batch AI processing"""
+    try:
+        # If no project_ids provided, analyze all projects
+        if not project_ids:
+            projects_cursor = db.projects.find({})
+            projects_list = await projects_cursor.to_list(length=None)
+            
+            if not projects_list:
+                return {
+                    "success": True,
+                    "message": "No projects found for batch analysis", 
+                    "results": [],
+                    "stats": {
+                        "total_projects": 0,
+                        "successful_analyses": 0,
+                        "failed_analyses": 0,
+                        "processing_time": 0
+                    }
+                }
+        else:
+            # Get specific projects by IDs
+            projects_list = []
+            for project_id in project_ids:
+                project_data = await db.projects.find_one({"id": project_id})
+                if project_data:
+                    projects_list.append(project_data)
+        
+        if not projects_list:
+            raise HTTPException(status_code=404, detail="No valid projects found for analysis")
+        
+        # Convert to KickstarterProject objects
+        projects = []
+        for project_data in projects_list:
+            try:
+                project = KickstarterProject(**project_data)
+                projects.append(project)
+            except Exception as e:
+                logger.warning(f"Skipping invalid project data: {e}")
+        
+        if not projects:
+            raise HTTPException(status_code=400, detail="No valid projects could be processed")
+        
+        # Perform batch analysis with rate limiting
+        start_time = datetime.utcnow()
+        logger.info(f"🚀 Starting batch analysis for {len(projects)} projects")
+        
+        if len(projects) <= batch_size:
+            # Small batch - process directly
+            analysis_results = await batch_analyze_projects(projects)
+        else:
+            # Large batch - use rate limiting
+            analysis_results = await batch_process_with_rate_limiting(projects, batch_size)
+        
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        
+        # Update projects with new analyses
+        successful_updates = 0
+        failed_updates = 0
+        
+        for i, result in enumerate(analysis_results):
+            try:
+                project_id = projects[i].id
+                await db.projects.update_one(
+                    {"id": project_id},
+                    {
+                        "$set": {
+                            "ai_analysis": result,
+                            "risk_level": result.get("risk_level", "Medium"),
+                            "updated_at": datetime.utcnow()
+                        }
+                    }
+                )
+                
+                # Invalidate cache for updated project
+                await invalidate_project_cache(project_id)
+                successful_updates += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to update project {projects[i].id}: {e}")
+                failed_updates += 1
+        
+        # Prepare response statistics
+        successful_analyses = sum(1 for r in analysis_results if not r.get("error"))
+        failed_analyses = len(analysis_results) - successful_analyses
+        
+        stats = {
+            "total_projects": len(projects),
+            "successful_analyses": successful_analyses,
+            "failed_analyses": failed_analyses,
+            "successful_updates": successful_updates,
+            "failed_updates": failed_updates,
+            "processing_time": processing_time,
+            "average_time_per_project": processing_time / len(projects) if projects else 0,
+            "batch_size_used": batch_size
+        }
+        
+        logger.info(f"✅ Batch analysis completed: {stats}")
+        
+        return {
+            "success": True,
+            "message": f"Batch analysis completed for {len(projects)} projects",
+            "results": analysis_results,
+            "stats": stats
+        }
+        
+    except Exception as e:
+        logger.error(f"Batch analysis endpoint failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/projects/batch-status/{batch_id}")
+async def get_batch_status(batch_id: str):
+    """Get status of a batch processing operation (placeholder for future async processing)"""
+    try:
+        # This is a placeholder for future async batch processing
+        # For now, return that all batches are processed synchronously
+        return {
+            "batch_id": batch_id,
+            "status": "completed",
+            "message": "Batch processing is currently synchronous",
+            "note": "All batch operations complete immediately"
+        }
+    except Exception as e:
+        logger.error(f"Batch status check failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/")
 async def root():
     return {"message": "Kickstarter Investment Tracker API"}
