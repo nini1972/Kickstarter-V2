@@ -13,7 +13,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field, validator
-from openai import AsyncOpenAI
 from pathlib import Path
 import uuid
 import aiohttp
