@@ -391,6 +391,90 @@ async def scrape_kickstarter_project(url: str) -> Dict[str, Any]:
         return {}
 
 # API Routes
+@api_router.get("/health")
+async def health_check():
+    """Comprehensive health check endpoint for monitoring system performance"""
+    try:
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "checks": {}
+        }
+        
+        # Database connectivity check
+        try:
+            await db.admin.command('ping')
+            health_status["checks"]["database"] = {
+                "status": "healthy",
+                "response_time_ms": 0
+            }
+        except Exception as e:
+            health_status["checks"]["database"] = {
+                "status": "unhealthy", 
+                "error": str(e)
+            }
+            health_status["status"] = "degraded"
+        
+        # Check database indexes
+        try:
+            projects_indexes = await db.projects.list_indexes().to_list(length=None)
+            investments_indexes = await db.investments.list_indexes().to_list(length=None)
+            
+            health_status["checks"]["indexes"] = {
+                "status": "healthy",
+                "projects_indexes": len(projects_indexes),
+                "investments_indexes": len(investments_indexes)
+            }
+        except Exception as e:
+            health_status["checks"]["indexes"] = {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+        
+        # OpenAI API connectivity check (basic)
+        try:
+            # Simple check without making actual API call to avoid costs
+            if os.environ.get('OPENAI_API_KEY'):
+                health_status["checks"]["openai"] = {
+                    "status": "configured",
+                    "api_key_present": bool(os.environ.get('OPENAI_API_KEY'))
+                }
+            else:
+                health_status["checks"]["openai"] = {
+                    "status": "not_configured",
+                    "api_key_present": False
+                }
+        except Exception as e:
+            health_status["checks"]["openai"] = {
+                "status": "error",
+                "error": str(e)
+            }
+        
+        # Collection statistics
+        try:
+            projects_count = await db.projects.count_documents({})
+            investments_count = await db.investments.count_documents({})
+            
+            health_status["checks"]["collections"] = {
+                "status": "healthy",
+                "projects_count": projects_count,
+                "investments_count": investments_count
+            }
+        except Exception as e:
+            health_status["checks"]["collections"] = {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+        
+        return health_status
+        
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
+
 @api_router.get("/")
 async def root():
     return {"message": "Kickstarter Investment Tracker API"}
