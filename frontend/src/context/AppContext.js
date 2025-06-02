@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const AppContext = createContext();
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
 export const AppProvider = ({ children }) => {
   // Centralized State
@@ -95,14 +93,8 @@ export const AppProvider = ({ children }) => {
   const fetchProjects = async (filters = {}) => {
     updateLoading('projects', true);
     try {
-      const params = new URLSearchParams();
-      if (filters.category) params.append('category', filters.category);
-      if (filters.risk_level) params.append('risk_level', filters.risk_level);
-      if (filters.page) params.append('page', filters.page);
-      if (filters.page_size) params.append('page_size', filters.page_size);
-
-      const response = await axios.get(`${BACKEND_URL}/api/projects?${params}`);
-      setProjects(response.data);
+      const data = await api.projects.list(filters);
+      setProjects(data);
       setErrors(prev => ({ ...prev, projects: null }));
     } catch (error) {
       handleError('projects', error);
@@ -114,12 +106,9 @@ export const AppProvider = ({ children }) => {
   const fetchInvestments = async (projectId = null) => {
     updateLoading('investments', true);
     try {
-      const url = projectId 
-        ? `${BACKEND_URL}/api/investments?project_id=${projectId}`
-        : `${BACKEND_URL}/api/investments`;
-      
-      const response = await axios.get(url);
-      setInvestments(response.data);
+      const params = projectId ? { project_id: projectId } : {};
+      const data = await api.investments.list(params);
+      setInvestments(data);
       setErrors(prev => ({ ...prev, investments: null }));
     } catch (error) {
       handleError('investments', error);
@@ -131,8 +120,8 @@ export const AppProvider = ({ children }) => {
   const fetchDashboardStats = async () => {
     updateLoading('dashboard', true);
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/dashboard/stats`);
-      setDashboardStats(response.data);
+      const data = await api.dashboard.stats();
+      setDashboardStats(data);
       setErrors(prev => ({ ...prev, dashboard: null }));
     } catch (error) {
       handleError('dashboard', error);
@@ -144,11 +133,11 @@ export const AppProvider = ({ children }) => {
   const fetchAlerts = async () => {
     updateLoading('alerts', true);
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/alerts`);
-      setAlerts(response.data);
+      const data = await api.alerts.list();
+      setAlerts(data);
       
       // Show browser notifications for high priority alerts
-      response.data.forEach(alert => {
+      data.forEach(alert => {
         if (alert.priority === 'high' && "Notification" in window && Notification.permission === "granted") {
           new Notification("🚀 Investment Alert!", {
             body: alert.message,
@@ -168,13 +157,13 @@ export const AppProvider = ({ children }) => {
   const fetchAdvancedAnalytics = async () => {
     updateLoading('analytics', true);
     try {
-      const [analyticsRes, trendsRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/analytics/advanced`),
-        axios.get(`${BACKEND_URL}/api/analytics/funding-trends`)
+      const [analyticsData, trendsData] = await Promise.all([
+        api.analytics.advanced(),
+        api.analytics.fundingTrends()
       ]);
       
-      setAdvancedAnalytics(analyticsRes.data);
-      setFundingTrends(trendsRes.data.trends || []);
+      setAdvancedAnalytics(analyticsData);
+      setFundingTrends(trendsData.trends || []);
       setErrors(prev => ({ ...prev, analytics: null }));
     } catch (error) {
       handleError('analytics', error);
@@ -185,8 +174,8 @@ export const AppProvider = ({ children }) => {
 
   const fetchAlertSettings = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/alerts/settings`);
-      setAlertSettings(response.data);
+      const data = await api.alerts.preferences();
+      setAlertSettings(data);
     } catch (error) {
       console.error('Failed to fetch alert settings:', error);
     }
@@ -194,8 +183,8 @@ export const AppProvider = ({ children }) => {
 
   const fetchRecommendations = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/recommendations`);
-      setRecommendations(response.data.recommendations);
+      const data = await api.recommendations();
+      setRecommendations(data.recommendations);
     } catch (error) {
       handleError('recommendations', error);
     }
@@ -204,8 +193,8 @@ export const AppProvider = ({ children }) => {
   // CRUD Operations
   const addProject = async (projectData) => {
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/projects`, projectData);
-      setProjects(prev => [...prev, response.data]);
+      const data = await api.projects.create(projectData);
+      setProjects(prev => [...prev, data]);
       toast.success('Project added successfully!');
       
       // Refresh related data
@@ -215,7 +204,7 @@ export const AppProvider = ({ children }) => {
         fetchAdvancedAnalytics()
       ]);
       
-      return response.data;
+      return data;
     } catch (error) {
       toast.error('Failed to add project');
       throw error;
@@ -224,8 +213,8 @@ export const AppProvider = ({ children }) => {
 
   const addInvestment = async (investmentData) => {
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/investments`, investmentData);
-      setInvestments(prev => [...prev, response.data]);
+      const data = await api.investments.create(investmentData);
+      setInvestments(prev => [...prev, data]);
       toast.success('Investment added successfully!');
       
       // Refresh related data
@@ -234,7 +223,7 @@ export const AppProvider = ({ children }) => {
         fetchAdvancedAnalytics()
       ]);
       
-      return response.data;
+      return data;
     } catch (error) {
       toast.error('Failed to add investment');
       throw error;
@@ -243,7 +232,7 @@ export const AppProvider = ({ children }) => {
 
   const updateAlertSettings = async (settings) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/alerts/settings`, settings);
+      await api.alerts.updatePreferences(settings);
       setAlertSettings(settings);
       toast.success('Alert settings updated!');
       
