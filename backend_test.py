@@ -130,8 +130,10 @@ class KickstarterAPITester:
         investment_data = {
             "project_id": self.test_project_id,
             "amount": 5000,
-            "date": datetime.now().isoformat().split("T")[0],
-            "notes": "Test investment from automated testing"
+            "investment_date": datetime.now().isoformat(),
+            "expected_return": 6000,
+            "notes": "Test investment from automated testing",
+            "reward_tier": "Premium"
         }
         
         success, response = self.run_test(
