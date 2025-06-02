@@ -353,10 +353,7 @@
   run_ui: false
 
 ## test_plan:
-  current_focus:
-    - "OpenAI v1.x Integration Validation"
-    - "Risk Level Case Sensitivity"
-    - "Model Dump Dictionary Issues"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
