@@ -1,6 +1,6 @@
 """
 🤖 AI Analysis Service
-OpenAI integration for intelligent project analysis with caching
+OpenAI integration with enterprise-grade circuit breaker and resilience
 """
 
 import logging
@@ -12,6 +12,10 @@ from openai import AsyncOpenAI
 
 from config.settings import openai_config
 from models.projects import KickstarterProject
+from services.circuit_breaker import (
+    CircuitBreaker, CircuitBreakerConfig, circuit_registry,
+    CircuitBreakerOpenError, CircuitBreakerTimeoutError, ExponentialBackoff
+)
 
 logger = logging.getLogger(__name__)
 
