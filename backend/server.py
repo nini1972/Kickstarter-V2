@@ -1291,6 +1291,27 @@ async def create_database_indexes():
         # Alert settings collection indexes
         await db.alert_settings.create_index([("user_id", 1)], unique=True, background=True)
         
+        # User authentication collection indexes
+        await db.users.create_index([("id", 1)], unique=True, background=True)
+        await db.users.create_index([("email", 1)], unique=True, background=True)
+        await db.users.create_index([("username", 1)], unique=True, background=True)
+        await db.users.create_index([("status", 1)], background=True)
+        await db.users.create_index([("role", 1)], background=True)
+        await db.users.create_index([("created_at", -1)], background=True)
+        
+        # User sessions collection indexes
+        await db.user_sessions.create_index([("id", 1)], unique=True, background=True)
+        await db.user_sessions.create_index([("user_id", 1)], background=True)
+        await db.user_sessions.create_index([("refresh_token", 1)], unique=True, background=True)
+        await db.user_sessions.create_index([("expires_at", 1)], background=True)
+        await db.user_sessions.create_index([("is_active", 1)], background=True)
+        
+        # Email verification collection indexes
+        await db.email_verifications.create_index([("id", 1)], unique=True, background=True)
+        await db.email_verifications.create_index([("user_id", 1)], background=True)
+        await db.email_verifications.create_index([("token", 1)], unique=True, background=True)
+        await db.email_verifications.create_index([("expires_at", 1)], background=True)
+        
         logger.info("✅ Database indexes created successfully!")
         
         # Log index information for monitoring
