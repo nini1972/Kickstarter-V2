@@ -224,11 +224,18 @@ class AuthDependency:
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
     ) -> Optional[TokenData]:
         """Get current user from token (optional - returns None if no token)"""
-        if not credentials:
+        # Try to get token from cookies first (secure method)
+        access_token = request.cookies.get("access_token")
+        
+        # Fallback to Authorization header for backward compatibility
+        if not access_token and credentials:
+            access_token = credentials.credentials
+        
+        if not access_token:
             return None
         
         try:
-            token_data = self.jwt_service.verify_token(credentials.credentials, "access")
+            token_data = self.jwt_service.verify_token(access_token, "access")
             return token_data
         except HTTPException:
             return None
@@ -236,14 +243,29 @@ class AuthDependency:
     async def get_current_user(
         self, 
         request: Request,
-        credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
     ) -> TokenData:
-        """Get current user from token (required)"""
+        """Get current user from token (required) - supports both cookies and Authorization header"""
         try:
-            token_data = self.jwt_service.verify_token(credentials.credentials, "access")
+            # Try to get token from cookies first (secure method)
+            access_token = request.cookies.get("access_token")
+            
+            # Fallback to Authorization header for backward compatibility
+            if not access_token and credentials:
+                access_token = credentials.credentials
+            
+            if not access_token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated - no token provided",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            token_data = self.jwt_service.verify_token(access_token, "access")
             
             # Log authentication attempt
-            logger.info(f"User authenticated: {token_data.user_id} from IP: {request.client.host}")
+            auth_method = "cookie" if request.cookies.get("access_token") else "header"
+            logger.info(f"User authenticated via {auth_method}: {token_data.user_id} from IP: {request.client.host}")
             
             return token_data
         except HTTPException as e:
