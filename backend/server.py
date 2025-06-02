@@ -1105,16 +1105,23 @@ async def get_smart_alerts():
         projects = await db.projects.find({"status": "live"}).to_list(100)
         
         all_alerts = []
-        for project in projects:
-            project_obj = KickstarterProject(**project)
-            alerts = await generate_project_alerts(project_obj, default_settings)
-            all_alerts.extend(alerts)
+        # Convert projects to list of dicts for enhanced alerts system
+        project_dicts = [project for project in projects]
+        alerts = await enhanced_smart_alerts_system(project_dicts)
         
-        # Sort by priority and creation time
-        priority_order = {"high": 3, "medium": 2, "low": 1}
-        all_alerts.sort(key=lambda x: (priority_order.get(x.priority, 0), x.created_at), reverse=True)
+        # Convert dict alerts to ProjectAlert objects
+        project_alerts = []
+        for alert in alerts:
+            project_alerts.append(ProjectAlert(
+                id=alert["id"],
+                project_id=alert["project_id"],
+                alert_type=alert["alert_type"],
+                message=alert["message"],
+                priority=alert["priority"].lower(),
+                created_at=datetime.fromisoformat(alert["created_at"])
+            ))
         
-        return all_alerts[:10]  # Return top 10 alerts
+        return project_alerts[:10]  # Return top 10 alerts
     except Exception as e:
         logging.error(f"Failed to generate alerts: {e}")
         return []
