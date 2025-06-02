@@ -1052,7 +1052,8 @@ async def scrape_project_data(request: Dict[str, str]):
         raise HTTPException(status_code=500, detail="Internal server error during scraping")
 
 @api_router.get("/recommendations")
-async def get_ai_recommendations():
+@limiter.limit("50/minute")  # Allow 50 recommendation requests per minute
+async def get_ai_recommendations(request: Request):
     """Get AI-powered investment recommendations"""
     try:
         # Get recent projects for analysis
