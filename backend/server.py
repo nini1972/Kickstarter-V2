@@ -131,7 +131,7 @@ async def get_redis_client():
 def generate_cache_key(prefix: str, project: KickstarterProject) -> str:
     """Generate a consistent cache key for project analysis"""
     # Create hash from project content that affects AI analysis
-    content = f"{project.name}_{project.description}_{project.category}_{project.goal_amount}_{project.current_amount}"
+    content = f"{project.name}_{project.description}_{project.category}_{project.goal_amount}_{project.pledged_amount}"
     content_hash = hashlib.md5(content.encode()).hexdigest()[:12]
     return f"{prefix}:ai_analysis:{project.id}:{content_hash}"
 
