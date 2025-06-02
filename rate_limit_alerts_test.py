@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("rate_limit_alerts_test")
 
-# Backend API URL from environment
+# Backend API URL
 BACKEND_URL = "https://d339d4fa-17fe-472f-aa53-c381cf22961a.preview.emergentagent.com/api"
 
 # Test results tracking
