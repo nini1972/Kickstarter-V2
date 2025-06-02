@@ -871,14 +871,515 @@ class AnalyticsService:
         except Exception as e:
             logger.error(f"Stress test calculation failed: {e}")
             return {}
-    def _calculate_prediction_confidence(self, investments: List[Investment], weighted_success: float) -> str:
-        """Calculate confidence level for predictions"""
-        if len(investments) < 3:
-            return "low"
-        elif weighted_success > 70 and len(investments) > 10:
-            return "high"
-        else:
-            return "medium"
+    
+    # Market insights helper methods
+    
+    async def _analyze_category_performance(self, all_projects_data: List[Dict]) -> Dict[str, Any]:
+        """Analyze performance across different project categories"""
+        try:
+            if not all_projects_data:
+                return {}
+            
+            category_stats = {}
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    category = project.category
+                    
+                    if category not in category_stats:
+                        category_stats[category] = {
+                            "total_projects": 0,
+                            "successful_projects": 0,
+                            "total_funding": 0,
+                            "avg_funding_percentage": 0,
+                            "success_rate": 0
+                        }
+                    
+                    stats = category_stats[category]
+                    stats["total_projects"] += 1
+                    stats["total_funding"] += project.pledged_amount
+                    
+                    if project.status == "successful":
+                        stats["successful_projects"] += 1
+                    
+                    funding_percentage = project.funding_percentage()
+                    stats["avg_funding_percentage"] += funding_percentage
+                    
+                except Exception as e:
+                    logger.error(f"Error processing project for category analysis: {e}")
+                    continue
+            
+            # Calculate final metrics
+            for category, stats in category_stats.items():
+                if stats["total_projects"] > 0:
+                    stats["success_rate"] = round((stats["successful_projects"] / stats["total_projects"]) * 100, 1)
+                    stats["avg_funding_percentage"] = round(stats["avg_funding_percentage"] / stats["total_projects"], 1)
+                    stats["avg_funding_per_project"] = round(stats["total_funding"] / stats["total_projects"], 2)
+            
+            # Sort by success rate
+            sorted_categories = sorted(category_stats.items(), key=lambda x: x[1]["success_rate"], reverse=True)
+            
+            return {
+                "top_performing_categories": dict(sorted_categories[:5]),
+                "category_rankings": sorted_categories,
+                "total_categories": len(category_stats)
+            }
+            
+        except Exception as e:
+            logger.error(f"Category performance analysis failed: {e}")
+            return {}
+    
+    async def _identify_emerging_trends(self, all_projects_data: List[Dict]) -> List[Dict[str, Any]]:
+        """Identify emerging trends in the market"""
+        try:
+            if not all_projects_data:
+                return []
+            
+            # Analyze recent projects (last 6 months) vs older projects
+            six_months_ago = datetime.utcnow() - timedelta(days=180)
+            recent_projects = []
+            older_projects = []
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    if project.created_at >= six_months_ago:
+                        recent_projects.append(project)
+                    else:
+                        older_projects.append(project)
+                except Exception:
+                    continue
+            
+            trends = []
+            
+            if recent_projects and older_projects:
+                # Category trend analysis
+                recent_categories = {}
+                older_categories = {}
+                
+                for project in recent_projects:
+                    recent_categories[project.category] = recent_categories.get(project.category, 0) + 1
+                
+                for project in older_projects:
+                    older_categories[project.category] = older_categories.get(project.category, 0) + 1
+                
+                # Calculate growth rates
+                for category in recent_categories:
+                    recent_count = recent_categories[category]
+                    older_count = older_categories.get(category, 0)
+                    
+                    if older_count > 0:
+                        growth_rate = ((recent_count - older_count) / older_count) * 100
+                        if growth_rate > 50:  # Significant growth
+                            trends.append({
+                                "type": "category_growth",
+                                "category": category,
+                                "growth_rate": round(growth_rate, 1),
+                                "description": f"{category} projects showing {growth_rate:.1f}% growth"
+                            })
+                
+                # Funding amount trends
+                recent_avg_funding = sum(p.pledged_amount for p in recent_projects) / len(recent_projects)
+                older_avg_funding = sum(p.pledged_amount for p in older_projects) / len(older_projects)
+                
+                if older_avg_funding > 0:
+                    funding_growth = ((recent_avg_funding - older_avg_funding) / older_avg_funding) * 100
+                    if abs(funding_growth) > 20:
+                        trends.append({
+                            "type": "funding_trend",
+                            "growth_rate": round(funding_growth, 1),
+                            "description": f"Average funding {'increased' if funding_growth > 0 else 'decreased'} by {abs(funding_growth):.1f}%"
+                        })
+            
+            return trends[:5]  # Return top 5 trends
+            
+        except Exception as e:
+            logger.error(f"Emerging trends analysis failed: {e}")
+            return []
+    
+    async def _analyze_success_factors(self, all_projects_data: List[Dict]) -> List[Dict[str, Any]]:
+        """Analyze key success factors for projects"""
+        try:
+            if not all_projects_data:
+                return []
+            
+            successful_projects = []
+            failed_projects = []
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    if project.status == "successful":
+                        successful_projects.append(project)
+                    elif project.status == "failed":
+                        failed_projects.append(project)
+                except Exception:
+                    continue
+            
+            factors = []
+            
+            if successful_projects and failed_projects:
+                # Goal amount analysis
+                successful_avg_goal = sum(p.goal_amount for p in successful_projects) / len(successful_projects)
+                failed_avg_goal = sum(p.goal_amount for p in failed_projects) / len(failed_projects)
+                
+                factors.append({
+                    "factor": "optimal_goal_amount",
+                    "successful_avg": round(successful_avg_goal, 2),
+                    "failed_avg": round(failed_avg_goal, 2),
+                    "insight": f"Successful projects average ${successful_avg_goal:,.0f} goals vs ${failed_avg_goal:,.0f} for failed"
+                })
+                
+                # Project duration analysis (if deadline data available)
+                successful_durations = []
+                failed_durations = []
+                
+                for project in successful_projects:
+                    if project.deadline and project.created_at:
+                        duration = (project.deadline - project.created_at).days
+                        successful_durations.append(duration)
+                
+                for project in failed_projects:
+                    if project.deadline and project.created_at:
+                        duration = (project.deadline - project.created_at).days
+                        failed_durations.append(duration)
+                
+                if successful_durations and failed_durations:
+                    successful_avg_duration = sum(successful_durations) / len(successful_durations)
+                    failed_avg_duration = sum(failed_durations) / len(failed_durations)
+                    
+                    factors.append({
+                        "factor": "campaign_duration",
+                        "successful_avg": round(successful_avg_duration, 0),
+                        "failed_avg": round(failed_avg_duration, 0),
+                        "insight": f"Successful campaigns average {successful_avg_duration:.0f} days vs {failed_avg_duration:.0f} days"
+                    })
+                
+                # Category success rates
+                category_success = {}
+                for project in successful_projects + failed_projects:
+                    category = project.category
+                    if category not in category_success:
+                        category_success[category] = {"successful": 0, "total": 0}
+                    
+                    category_success[category]["total"] += 1
+                    if project.status == "successful":
+                        category_success[category]["successful"] += 1
+                
+                best_category = max(category_success.items(), 
+                                  key=lambda x: x[1]["successful"] / x[1]["total"] if x[1]["total"] > 0 else 0)
+                
+                if best_category[1]["total"] > 0:
+                    success_rate = (best_category[1]["successful"] / best_category[1]["total"]) * 100
+                    factors.append({
+                        "factor": "best_performing_category",
+                        "category": best_category[0],
+                        "success_rate": round(success_rate, 1),
+                        "insight": f"{best_category[0]} has highest success rate at {success_rate:.1f}%"
+                    })
+            
+            return factors
+            
+        except Exception as e:
+            logger.error(f"Success factors analysis failed: {e}")
+            return []
+    
+    async def _identify_market_opportunities(self, all_projects_data: List[Dict], user_projects_data: List[Dict]) -> List[Dict[str, Any]]:
+        """Identify potential market opportunities"""
+        try:
+            opportunities = []
+            
+            if not all_projects_data:
+                return opportunities
+            
+            # Analyze underserved categories
+            category_saturation = {}
+            total_projects = len(all_projects_data)
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    category = project.category
+                    category_saturation[category] = category_saturation.get(category, 0) + 1
+                except Exception:
+                    continue
+            
+            # Find categories with low saturation but high success rates
+            for category, count in category_saturation.items():
+                saturation_rate = (count / total_projects) * 100
+                if saturation_rate < 5:  # Less than 5% of market
+                    # Check success rate for this category
+                    category_projects = [p for p in all_projects_data if p.get("category") == category]
+                    successful = sum(1 for p in category_projects if p.get("status") == "successful")
+                    success_rate = (successful / len(category_projects)) * 100 if category_projects else 0
+                    
+                    if success_rate > 60:  # High success rate
+                        opportunities.append({
+                            "type": "underserved_category",
+                            "category": category,
+                            "saturation_rate": round(saturation_rate, 1),
+                            "success_rate": round(success_rate, 1),
+                            "description": f"{category} is underserved ({saturation_rate:.1f}% market share) with high success rate ({success_rate:.1f}%)"
+                        })
+            
+            # Analyze user's portfolio gaps
+            if user_projects_data:
+                user_categories = set(p.get("category") for p in user_projects_data)
+                market_categories = set(p.get("category") for p in all_projects_data)
+                missing_categories = market_categories - user_categories
+                
+                for category in list(missing_categories)[:3]:  # Top 3 missing categories
+                    category_projects = [p for p in all_projects_data if p.get("category") == category]
+                    if category_projects:
+                        avg_funding = sum(p.get("pledged_amount", 0) for p in category_projects) / len(category_projects)
+                        opportunities.append({
+                            "type": "portfolio_gap",
+                            "category": category,
+                            "avg_funding": round(avg_funding, 2),
+                            "description": f"Consider exploring {category} projects (avg funding: ${avg_funding:,.0f})"
+                        })
+            
+            return opportunities[:5]  # Return top 5 opportunities
+            
+        except Exception as e:
+            logger.error(f"Market opportunities analysis failed: {e}")
+            return []
+    
+    async def _analyze_competitive_landscape(self, all_projects_data: List[Dict]) -> Dict[str, Any]:
+        """Analyze competitive landscape"""
+        try:
+            if not all_projects_data:
+                return {}
+            
+            # Market concentration analysis
+            category_funding = {}
+            total_market_funding = 0
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    category = project.category
+                    funding = project.pledged_amount
+                    
+                    category_funding[category] = category_funding.get(category, 0) + funding
+                    total_market_funding += funding
+                except Exception:
+                    continue
+            
+            # Calculate market share
+            market_share = {}
+            for category, funding in category_funding.items():
+                share = (funding / total_market_funding) * 100 if total_market_funding > 0 else 0
+                market_share[category] = round(share, 2)
+            
+            # Identify dominant categories
+            dominant_categories = sorted(market_share.items(), key=lambda x: x[1], reverse=True)[:5]
+            
+            # Competition intensity (projects per category)
+            category_counts = {}
+            for project_data in all_projects_data:
+                category = project_data.get("category")
+                if category:
+                    category_counts[category] = category_counts.get(category, 0) + 1
+            
+            return {
+                "market_leaders": dict(dominant_categories),
+                "market_concentration": {
+                    "total_funding": round(total_market_funding, 2),
+                    "total_categories": len(category_funding),
+                    "hhi_index": sum((share/100)**2 for share in market_share.values())  # Herfindahl index
+                },
+                "competition_intensity": dict(sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:5])
+            }
+            
+        except Exception as e:
+            logger.error(f"Competitive landscape analysis failed: {e}")
+            return {}
+    
+    async def _analyze_timing_insights(self, all_projects_data: List[Dict]) -> Dict[str, Any]:
+        """Analyze optimal timing patterns"""
+        try:
+            if not all_projects_data:
+                return {}
+            
+            # Monthly success rate analysis
+            monthly_stats = {}
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    month = project.created_at.strftime("%B")
+                    
+                    if month not in monthly_stats:
+                        monthly_stats[month] = {"total": 0, "successful": 0}
+                    
+                    monthly_stats[month]["total"] += 1
+                    if project.status == "successful":
+                        monthly_stats[month]["successful"] += 1
+                        
+                except Exception:
+                    continue
+            
+            # Calculate success rates by month
+            monthly_success_rates = {}
+            for month, stats in monthly_stats.items():
+                if stats["total"] > 0:
+                    success_rate = (stats["successful"] / stats["total"]) * 100
+                    monthly_success_rates[month] = round(success_rate, 1)
+            
+            # Find best and worst months
+            best_month = max(monthly_success_rates.items(), key=lambda x: x[1]) if monthly_success_rates else ("N/A", 0)
+            worst_month = min(monthly_success_rates.items(), key=lambda x: x[1]) if monthly_success_rates else ("N/A", 0)
+            
+            return {
+                "monthly_success_rates": monthly_success_rates,
+                "best_launch_month": {
+                    "month": best_month[0],
+                    "success_rate": best_month[1]
+                },
+                "worst_launch_month": {
+                    "month": worst_month[0],
+                    "success_rate": worst_month[1]
+                },
+                "seasonal_insights": self._generate_seasonal_insights(monthly_success_rates)
+            }
+            
+        except Exception as e:
+            logger.error(f"Timing insights analysis failed: {e}")
+            return {}
+    
+    async def _identify_investment_gaps(self, user_projects_data: List[Dict], all_projects_data: List[Dict]) -> List[Dict[str, Any]]:
+        """Identify gaps in user's investment strategy"""
+        try:
+            gaps = []
+            
+            if not all_projects_data:
+                return gaps
+            
+            # Analyze user's portfolio composition
+            user_categories = {}
+            user_risk_levels = {}
+            user_funding_ranges = {"low": 0, "medium": 0, "high": 0}  # <10k, 10k-100k, >100k
+            
+            for project_data in user_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    
+                    # Category distribution
+                    category = project.category
+                    user_categories[category] = user_categories.get(category, 0) + 1
+                    
+                    # Risk level distribution
+                    risk = project.risk_level
+                    user_risk_levels[risk] = user_risk_levels.get(risk, 0) + 1
+                    
+                    # Funding range distribution
+                    if project.goal_amount < 10000:
+                        user_funding_ranges["low"] += 1
+                    elif project.goal_amount < 100000:
+                        user_funding_ranges["medium"] += 1
+                    else:
+                        user_funding_ranges["high"] += 1
+                        
+                except Exception:
+                    continue
+            
+            # Compare with market distribution
+            market_categories = {}
+            market_risk_levels = {}
+            market_funding_ranges = {"low": 0, "medium": 0, "high": 0}
+            
+            for project_data in all_projects_data:
+                try:
+                    project = KickstarterProject(**project_data)
+                    
+                    market_categories[project.category] = market_categories.get(project.category, 0) + 1
+                    market_risk_levels[project.risk_level] = market_risk_levels.get(project.risk_level, 0) + 1
+                    
+                    if project.goal_amount < 10000:
+                        market_funding_ranges["low"] += 1
+                    elif project.goal_amount < 100000:
+                        market_funding_ranges["medium"] += 1
+                    else:
+                        market_funding_ranges["high"] += 1
+                        
+                except Exception:
+                    continue
+            
+            # Identify category gaps
+            total_user_projects = sum(user_categories.values()) if user_categories else 1
+            total_market_projects = sum(market_categories.values()) if market_categories else 1
+            
+            for category, market_count in market_categories.items():
+                market_percentage = (market_count / total_market_projects) * 100
+                user_count = user_categories.get(category, 0)
+                user_percentage = (user_count / total_user_projects) * 100
+                
+                if market_percentage > 10 and user_percentage < 5:  # Significant market presence, low user presence
+                    gaps.append({
+                        "type": "category_gap",
+                        "category": category,
+                        "market_share": round(market_percentage, 1),
+                        "user_share": round(user_percentage, 1),
+                        "recommendation": f"Consider investing in {category} projects (market share: {market_percentage:.1f}%)"
+                    })
+            
+            # Identify risk level gaps
+            for risk_level, market_count in market_risk_levels.items():
+                market_percentage = (market_count / total_market_projects) * 100
+                user_count = user_risk_levels.get(risk_level, 0)
+                user_percentage = (user_count / total_user_projects) * 100
+                
+                if abs(market_percentage - user_percentage) > 20:  # Significant deviation
+                    gaps.append({
+                        "type": "risk_balance_gap",
+                        "risk_level": risk_level,
+                        "market_distribution": round(market_percentage, 1),
+                        "user_distribution": round(user_percentage, 1),
+                        "recommendation": f"Consider {'increasing' if market_percentage > user_percentage else 'decreasing'} {risk_level} risk investments"
+                    })
+            
+            return gaps[:5]  # Return top 5 gaps
+            
+        except Exception as e:
+            logger.error(f"Investment gaps analysis failed: {e}")
+            return []
+    
+    def _generate_seasonal_insights(self, monthly_success_rates: Dict[str, float]) -> List[str]:
+        """Generate seasonal insights from monthly data"""
+        try:
+            insights = []
+            
+            if not monthly_success_rates:
+                return insights
+            
+            # Define seasons
+            seasons = {
+                "Spring": ["March", "April", "May"],
+                "Summer": ["June", "July", "August"],
+                "Fall": ["September", "October", "November"],
+                "Winter": ["December", "January", "February"]
+            }
+            
+            # Calculate seasonal averages
+            seasonal_averages = {}
+            for season, months in seasons.items():
+                rates = [monthly_success_rates.get(month, 0) for month in months]
+                seasonal_averages[season] = sum(rates) / len(rates) if rates else 0
+            
+            # Find best and worst seasons
+            best_season = max(seasonal_averages.items(), key=lambda x: x[1])
+            worst_season = min(seasonal_averages.items(), key=lambda x: x[1])
+            
+            insights.append(f"{best_season[0]} is the best season for launches ({best_season[1]:.1f}% avg success rate)")
+            insights.append(f"Avoid launching in {worst_season[0]} ({worst_season[1]:.1f}% avg success rate)")
+            
+            return insights
+            
+        except Exception as e:
+            logger.error(f"Seasonal insights generation failed: {e}")
+            return []
     
     def _calculate_diversification_factor(self, investments: List[Investment]) -> float:
         """Calculate portfolio diversification factor"""
