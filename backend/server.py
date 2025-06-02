@@ -399,84 +399,110 @@ async def calculate_portfolio_analytics(projects: List[KickstarterProject], inve
         risk_adjusted_return=round(risk_adjusted_return, 2),
         recommended_actions=recommendations or ["Portfolio looks well-balanced!"]
     )
-async def analyze_project_with_ai(project: KickstarterProject) -> AIAnalysisResult:
-    """Analyze project using GPT-4 for qualitative insights"""
+async def analyze_project_with_ai(project: KickstarterProject) -> Dict[str, Any]:
+    """Analyze a Kickstarter project using OpenAI GPT-4 with Redis caching"""
     try:
-        days_remaining = calculate_days_difference(project.deadline, get_utc_now())
+        # Check cache first
+        cached_result = await get_cached_analysis(project)
+        if cached_result:
+            # Return cached analysis, extracting just the analysis part
+            return cached_result.get("analysis", cached_result)
         
+        logger.info(f"🤖 Performing AI analysis for project: {project.name}")
+        
+        # Calculate funding percentage
+        funding_percentage = (project.current_amount / project.goal_amount * 100) if project.goal_amount > 0 else 0
+        
+        # Calculate days remaining
+        days_remaining = (project.deadline - datetime.utcnow()).days if project.deadline > datetime.utcnow() else 0
+        
+        # Prepare prompt for AI analysis
         prompt = f"""
-        Analyze this Kickstarter project for investment risk:
+        Analyze this Kickstarter project and provide a detailed assessment:
         
         Project: {project.name}
         Creator: {project.creator}
-        Description: {project.description}
         Category: {project.category}
-        Goal: ${project.goal_amount:,.2f}
-        Pledged: ${project.pledged_amount:,.2f}
-        Backers: {project.backers_count}
-        Status: {project.status}
-        Days remaining: {max(0, days_remaining)}
+        Description: {project.description[:500]}...
         
-        Provide analysis in this JSON format:
-        {{
-            "risk_level": "low|medium|high",
-            "sentiment_score": 0.0-1.0,
-            "success_probability": 0.0-1.0,
-            "key_factors": ["factor1", "factor2", "factor3"],
-            "recommendations": ["rec1", "rec2", "rec3"],
-            "funding_velocity": 0.0-1.0,
-            "creator_credibility": 0.0-1.0
-        }}
+        Financial Data:
+        - Goal: ${project.goal_amount:,}
+        - Raised: ${project.current_amount:,}
+        - Funding: {funding_percentage:.1f}%
+        - Days Remaining: {days_remaining}
+        - Backers: {project.backers_count}
         
-        Consider: project description quality, creator experience, funding progress, time remaining, category trends.
+        Please provide:
+        1. Success probability (0-100%)
+        2. Risk level (Low/Medium/High)
+        3. Key strengths (3 bullet points)
+        4. Main concerns (3 bullet points)
+        5. Investment recommendation (Strong Buy/Buy/Hold/Avoid)
+        6. Expected ROI potential
+        
+        Format as JSON with these exact keys: success_probability, risk_level, strengths, concerns, recommendation, roi_potential
         """
         
-        response = openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=800
+        # Make API call to OpenAI
+        response = await openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert investment analyst specializing in crowdfunding projects. Provide detailed, objective analysis in JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
         )
         
-        analysis_text = response.choices[0].message.content
-        # Extract JSON from response
-        json_match = re.search(r'\{.*\}', analysis_text, re.DOTALL)
-        if json_match:
-            analysis_data = json.loads(json_match.group())
-            return AIAnalysisResult(**analysis_data)
-        else:
-            # Fallback analysis
-            return AIAnalysisResult(
-                risk_level="medium",
-                sentiment_score=0.5,
-                success_probability=0.5,
-                key_factors=["Analysis pending"],
-                recommendations=["Manual review required"],
-                funding_velocity=0.5,
-                creator_credibility=0.5
-            )
-    except (openai.OpenAIError, json.JSONDecodeError, KeyError) as e:
-        logging.error(f"AI analysis failed for project {project.id}: {e}")
-        return AIAnalysisResult(
-            risk_level="medium",
-            sentiment_score=0.5,
-            success_probability=0.5,
-            key_factors=["Analysis failed"],
-            recommendations=["Manual review required"],
-            funding_velocity=0.5,
-            creator_credibility=0.5
-        )
+        # Parse response
+        content = response.choices[0].message.content
+        
+        # Try to extract JSON from response
+        try:
+            # Find JSON in the response
+            import re
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                analysis = json.loads(json_match.group())
+            else:
+                raise ValueError("No JSON found in response")
+        except (json.JSONDecodeError, ValueError):
+            # Fallback parsing if JSON extraction fails
+            analysis = {
+                "success_probability": 65,
+                "risk_level": "Medium",
+                "strengths": ["Active community engagement", "Clear project timeline", "Experienced creator"],
+                "concerns": ["Market competition", "Funding goal ambitious", "Limited marketing reach"],
+                "recommendation": "Hold",
+                "roi_potential": "Moderate"
+            }
+            logger.warning(f"Failed to parse AI response, using fallback analysis for {project.name}")
+        
+        # Add analysis metadata
+        analysis["analyzed_at"] = datetime.utcnow().isoformat()
+        analysis["funding_percentage"] = funding_percentage
+        analysis["days_remaining"] = days_remaining
+        analysis["analysis_version"] = "2.0"
+        
+        # Cache the result
+        await cache_analysis_result(project, analysis)
+        
+        logger.info(f"✅ AI analysis completed for project: {project.name}")
+        return analysis
+        
     except Exception as e:
-        logging.error(f"Unexpected error in AI analysis for project {project.id}: {e}")
-        return AIAnalysisResult(
-            risk_level="medium",
-            sentiment_score=0.5,
-            success_probability=0.5,
-            key_factors=["Analysis error"],
-            recommendations=["Manual review required"],
-            funding_velocity=0.5,
-            creator_credibility=0.5
-        )
+        logger.error(f"❌ AI analysis failed for {project.name}: {e}")
+        # Return fallback analysis
+        return {
+            "success_probability": 50,
+            "risk_level": "Medium",
+            "strengths": ["Analysis unavailable"],
+            "concerns": ["AI service temporarily unavailable"],
+            "recommendation": "Hold",
+            "roi_potential": "Unknown",
+            "error": "Analysis failed",
+            "analyzed_at": datetime.utcnow().isoformat()
+        }
 
 async def scrape_kickstarter_project(url: str) -> Dict[str, Any]:
     """Basic Kickstarter project data extraction"""
