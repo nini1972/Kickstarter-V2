@@ -768,8 +768,8 @@ class BatchAnalyzeRequest(BaseModel):
 async def batch_analyze_projects_endpoint(request: Request, request_data: BatchAnalyzeRequest):
     """Analyze multiple projects using batch AI processing"""
     try:
-        project_ids = request.project_ids
-        batch_size = request.batch_size
+        project_ids = request_data.project_ids
+        batch_size = request_data.batch_size
         # If no project_ids provided, analyze all projects
         if not project_ids:
             projects_cursor = db.projects.find({})
