@@ -233,9 +233,9 @@ class TestModelEdgeCases:
     
     def test_project_very_long_title(self, sample_project_data):
         """Test project with maximum length title"""
-        sample_project_data["title"] = "A" * 200  # Assuming max length is 200
+        sample_project_data["name"] = "A" * 200  # Assuming max length is 200
         project = ProjectCreate(**sample_project_data)
-        assert len(project.title) == 200
+        assert len(project.name) == 200
     
     def test_project_empty_description(self, sample_project_data):
         """Test project with empty description"""
