@@ -503,6 +503,106 @@ async def analyze_project_with_ai(project: KickstarterProject) -> Dict[str, Any]
             "analyzed_at": datetime.utcnow().isoformat()
         }
 
+async def batch_analyze_projects(projects: List[KickstarterProject]) -> List[Dict[str, Any]]:
+    """Analyze multiple Kickstarter projects in parallel using batch processing"""
+    try:
+        logger.info(f"🚀 Starting batch AI analysis for {len(projects)} projects")
+        
+        # Create tasks for parallel processing
+        analysis_tasks = []
+        for project in projects:
+            task = analyze_project_with_ai(project)
+            analysis_tasks.append(task)
+        
+        # Execute all analyses in parallel with proper error handling
+        results = await asyncio.gather(*analysis_tasks, return_exceptions=True)
+        
+        # Process results and handle any exceptions
+        processed_results = []
+        successful_analyses = 0
+        failed_analyses = 0
+        
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"❌ Batch analysis failed for project {projects[i].name}: {result}")
+                # Add fallback analysis for failed projects
+                fallback_analysis = {
+                    "success_probability": 50,
+                    "risk_level": "Medium", 
+                    "strengths": ["Analysis failed - using fallback"],
+                    "concerns": ["Batch analysis temporarily unavailable"],
+                    "recommendation": "Hold",
+                    "roi_potential": "Unknown",
+                    "error": "Batch analysis failed",
+                    "analyzed_at": datetime.utcnow().isoformat(),
+                    "batch_processed": True
+                }
+                processed_results.append(fallback_analysis)
+                failed_analyses += 1
+            else:
+                # Add batch processing metadata
+                result["batch_processed"] = True
+                result["batch_timestamp"] = datetime.utcnow().isoformat()
+                processed_results.append(result)
+                successful_analyses += 1
+        
+        logger.info(f"✅ Batch analysis completed: {successful_analyses} successful, {failed_analyses} failed")
+        return processed_results
+        
+    except Exception as e:
+        logger.error(f"❌ Batch analysis processing failed: {e}")
+        # Return fallback analyses for all projects
+        fallback_results = []
+        for project in projects:
+            fallback_analysis = {
+                "success_probability": 50,
+                "risk_level": "Medium",
+                "strengths": ["Batch analysis unavailable"],
+                "concerns": ["Batch processing temporarily unavailable"],
+                "recommendation": "Hold", 
+                "roi_potential": "Unknown",
+                "error": "Batch processing failed",
+                "analyzed_at": datetime.utcnow().isoformat(),
+                "batch_processed": True
+            }
+            fallback_results.append(fallback_analysis)
+        
+        return fallback_results
+
+async def batch_process_with_rate_limiting(projects: List[KickstarterProject], batch_size: int = 5) -> List[Dict[str, Any]]:
+    """Process projects in batches with rate limiting to avoid API limits"""
+    try:
+        logger.info(f"📊 Processing {len(projects)} projects in batches of {batch_size}")
+        
+        all_results = []
+        total_batches = (len(projects) + batch_size - 1) // batch_size
+        
+        for i in range(0, len(projects), batch_size):
+            batch_num = (i // batch_size) + 1
+            batch = projects[i:i + batch_size]
+            
+            logger.info(f"🔄 Processing batch {batch_num}/{total_batches} ({len(batch)} projects)")
+            
+            # Process batch
+            batch_start_time = datetime.utcnow()
+            batch_results = await batch_analyze_projects(batch)
+            batch_duration = (datetime.utcnow() - batch_start_time).total_seconds()
+            
+            logger.info(f"✅ Batch {batch_num} completed in {batch_duration:.2f}s")
+            
+            all_results.extend(batch_results)
+            
+            # Add small delay between batches to respect API limits
+            if i + batch_size < len(projects):
+                await asyncio.sleep(1)  # 1 second delay between batches
+        
+        logger.info(f"🎉 All batch processing completed: {len(all_results)} total analyses")
+        return all_results
+        
+    except Exception as e:
+        logger.error(f"❌ Batch processing with rate limiting failed: {e}")
+        return []
+
 async def scrape_kickstarter_project(url: str) -> Dict[str, Any]:
     """Basic Kickstarter project data extraction"""
     try:
