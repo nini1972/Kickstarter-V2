@@ -428,6 +428,101 @@ async def logout_user(
             detail="Logout failed"
         )
 
+@auth_router.post("/demo-login")
+async def demo_login(request: Request, response: Response):
+    """Secure demo login with server-generated JWT tokens"""
+    try:
+        client_ip = request.client.host
+        logger.info(f"Demo login request from IP: {client_ip}")
+        
+        # Create a demo user (server-side only)
+        demo_user_data = {
+            "id": "demo-user-12345",
+            "email": "demo@kickstarter-tracker.com",
+            "username": "demo_user",
+            "full_name": "Demo User",
+            "role": "user",
+            "status": "active",
+            "is_verified": True,
+            "created_at": datetime.utcnow(),
+            "last_login": datetime.utcnow()
+        }
+        
+        # Generate real JWT tokens with demo user data
+        token_data = {
+            "sub": demo_user_data["id"],
+            "email": demo_user_data["email"],
+            "role": demo_user_data["role"],
+            "username": demo_user_data["username"]
+        }
+        
+        access_token = jwt_service.create_access_token(token_data)
+        refresh_token = jwt_service.create_refresh_token({
+            "sub": demo_user_data["id"], 
+            "email": demo_user_data["email"]
+        })
+        
+        # Calculate expiration time
+        expires_in = jwt_service.config.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        
+        # Set secure HTTP-only cookies for demo session
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=expires_in,
+            httponly=True,
+            secure=True if jwt_service.config.SECURE_COOKIES else False,
+            samesite="lax",
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api"
+        )
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            max_age=jwt_service.config.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            httponly=True,
+            secure=True if jwt_service.config.SECURE_COOKIES else False,
+            samesite="lax",
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api/auth"
+        )
+        
+        logger.info(f"Demo user logged in from IP: {client_ip}")
+        
+        # Return the same structure as regular login but mark as demo
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=expires_in,
+            user=UserResponse(
+                id=demo_user_data["id"],
+                email=demo_user_data["email"],
+                username=demo_user_data["username"],
+                full_name=demo_user_data["full_name"],
+                role=demo_user_data["role"],
+                status=demo_user_data["status"],
+                is_verified=demo_user_data["is_verified"],
+                avatar_url=None,
+                bio="Demo user for testing Kickstarter Investment Tracker",
+                location="Demo City",
+                website="https://demo.example.com",
+                preferred_categories=["Technology", "Games", "Design"],
+                risk_tolerance="medium",
+                investment_budget=5000.0,
+                created_at=demo_user_data["created_at"],
+                last_login=demo_user_data["last_login"]
+            )
+        )
+        
+    except Exception as e:
+        logger.error(f"Demo login failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Demo login failed"
+        )
+
 @auth_router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(current_user = Depends(get_current_user)):
     """Get current user profile"""
