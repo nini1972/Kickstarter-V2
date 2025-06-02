@@ -643,13 +643,20 @@ async def scrape_kickstarter_project(url: str) -> Dict[str, Any]:
 
 # API Routes
 @api_router.get("/health")
-async def health_check():
+@limiter.limit("30/minute")  # Allow 30 health checks per minute
+async def health_check(request: Request):
     """Comprehensive health check endpoint for monitoring system performance"""
     try:
         health_status = {
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
-            "checks": {}
+            "checks": {},
+            "rate_limiting": {
+                "enabled": True,
+                "health_check_limit": "30/minute",
+                "api_limit": "100/minute",
+                "batch_limit": "10/hour"
+            }
         }
         
         # Database connectivity check
