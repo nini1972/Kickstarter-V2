@@ -128,7 +128,7 @@ class UserUpdate(BaseModel):
     location: Optional[str] = Field(None, max_length=100)
     website: Optional[str] = None
     preferred_categories: Optional[List[str]] = None
-    risk_tolerance: Optional[str] = Field(None, regex="^(low|medium|high)$")
+    risk_tolerance: Optional[str] = Field(None, pattern="^(low|medium|high)$")
     investment_budget: Optional[float] = Field(None, ge=0)
     avatar_url: Optional[str] = None
 
