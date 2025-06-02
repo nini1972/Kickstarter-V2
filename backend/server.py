@@ -174,7 +174,7 @@ async def health_check(request: Request):
         )
 
 # Project Management Endpoints
-@app.post("/api/projects", response_model=ProjectResponse)
+@app.post("/api/projects", response_model=KickstarterProject)
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def create_project(
     request: Request,
@@ -184,11 +184,7 @@ async def create_project(
     """Create a new project with AI analysis"""
     try:
         project = await project_service.create_project(project_data, current_user.id)
-        return ProjectResponse(
-            success=True,
-            message="Project created successfully",
-            data=project
-        )
+        return project
     except Exception as e:
         logger.error(f"Failed to create project: {e}")
         raise HTTPException(status_code=500, detail=str(e))
