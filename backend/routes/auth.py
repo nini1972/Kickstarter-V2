@@ -128,6 +128,7 @@ async def register_user(user_data: UserCreate, request: Request):
         )
 
 @auth_router.post("/login", response_model=Token)
+@limiter.limit(rate_limit_config.LOGIN_LIMIT)
 async def login_user(user_credentials: UserLogin, request: Request, response: Response):
     """Authenticate user and return JWT tokens"""
     try:
