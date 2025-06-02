@@ -286,6 +286,62 @@ async def reset_all_circuit_breakers(current_user: TokenData = Depends(get_curre
         logger.error(f"Failed to reset all circuit breakers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Database Optimization Monitoring Endpoints
+@app.get("/api/db-optimization/stats")
+async def get_db_optimization_stats(current_user: TokenData = Depends(get_current_user)):
+    """Get database optimization statistics and performance metrics"""
+    try:
+        if not db_optimization_service:
+            raise HTTPException(status_code=503, detail="Database optimization service not available")
+        
+        stats = db_optimization_service.get_optimization_stats()
+        return {
+            "optimization_stats": stats,
+            "service_status": "active",
+            "generated_at": datetime.utcnow().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get database optimization stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/dashboard/optimized")
+async def get_optimized_dashboard_analytics(current_user: TokenData = Depends(get_current_user)):
+    """Get dashboard analytics using optimized database queries"""
+    try:
+        if not analytics_service:
+            raise HTTPException(status_code=503, detail="Analytics service not available")
+        
+        # Force use of optimization
+        analytics = await analytics_service.get_dashboard_analytics(
+            user_id=current_user.user_id, 
+            use_optimization=True
+        )
+        
+        return analytics
+    except Exception as e:
+        logger.error(f"Failed to get optimized dashboard analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/market-insights/optimized")
+async def get_optimized_market_insights(current_user: TokenData = Depends(get_current_user)):
+    """Get market insights using optimized streaming queries"""
+    try:
+        if not analytics_service:
+            raise HTTPException(status_code=503, detail="Analytics service not available")
+        
+        # Force use of optimization
+        insights = await analytics_service.get_market_insights(
+            user_id=current_user.user_id, 
+            use_optimization=True
+        )
+        
+        return insights
+    except Exception as e:
+        logger.error(f"Failed to get optimized market insights: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Project Management Endpoints
 @app.post("/api/projects", response_model=KickstarterProject)
 @limiter.limit(rate_limit_config.API_LIMIT)
