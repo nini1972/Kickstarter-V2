@@ -229,17 +229,32 @@ async def login_user(user_credentials: UserLogin, request: Request, response: Re
             }
         )
         
-        # Set secure HTTP-only cookie for refresh token (optional)
-        if jwt_service.config.SECURE_COOKIES:
-            response.set_cookie(
-                key="refresh_token",
-                value=refresh_token,
-                max_age=jwt_service.config.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                httponly=True,
-                secure=True,
-                samesite="strict",
-                domain=jwt_service.config.COOKIE_DOMAIN
-            )
+        # Set secure HTTP-only cookies for both access and refresh tokens
+        # This replaces localStorage storage to prevent XSS attacks
+        
+        # Access token cookie (shorter expiration)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=jwt_service.config.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            httponly=True,
+            secure=True if jwt_service.config.SECURE_COOKIES else False,
+            samesite="lax",  # Allow cross-site requests for API calls
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api"  # Restrict to API paths only
+        )
+        
+        # Refresh token cookie (longer expiration)
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            max_age=jwt_service.config.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            httponly=True,
+            secure=True if jwt_service.config.SECURE_COOKIES else False,
+            samesite="lax",
+            domain=jwt_service.config.COOKIE_DOMAIN,
+            path="/api/auth"  # Restrict to auth endpoints only
+        )
         
         logger.info(f"User logged in: {user.email} from IP: {client_ip}")
         
