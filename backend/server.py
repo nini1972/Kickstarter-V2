@@ -1237,7 +1237,7 @@ app.include_router(api_router)
 # Configure CORS - Restrict in production
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://d339d4fa-17fe-472f-aa53-c381cf22961a.preview.emergentagent.com",
+    "https://d912fcb5-ed95-465d-b2ca-71ab01b8d494.preview.emergentagent.com",
     # Add your production domain here
 ]
 
