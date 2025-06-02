@@ -93,7 +93,9 @@ export const AuthProvider = ({ children }) => {
       username: 'demo_user',
       role: 'user'
     };
-    const demoToken = 'demo-token-for-testing';
+    
+    // Create a JWT-like token for the demo user
+    const demoToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vLXVzZXItMSIsImVtYWlsIjoiZGVtb0BleGFtcGxlLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
     
     setToken(demoToken);
     setUser(demoUser);
