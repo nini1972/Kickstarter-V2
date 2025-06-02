@@ -35,14 +35,16 @@ class TestProjectModels:
         assert project.category == test_data["category"]
         assert project.status == "live"  # Default status
     
-    def test_project_create_invalid_risk_level(self, sample_project_data):
-        """Test validation fails with invalid risk level"""
-        sample_project_data["risk_level"] = "invalid"
+    def test_project_create_invalid_status(self, sample_project_data):
+        """Test validation fails with invalid status"""
+        test_data = sample_project_data.copy()
+        test_data.pop('risk_level', None)
+        test_data["status"] = "invalid"
         
         with pytest.raises(ValidationError) as exc_info:
-            ProjectCreate(**sample_project_data)
+            ProjectCreate(**test_data)
         
-        assert "risk_level" in str(exc_info.value)
+        assert "status" in str(exc_info.value)
     
     def test_project_create_invalid_funding_goal(self, sample_project_data):
         """Test validation fails with negative funding goal"""
