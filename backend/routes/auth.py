@@ -13,7 +13,7 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
-# Local imports
+from config.settings import rate_limit_config
 from models.auth import (
     UserCreate, UserLogin, UserResponse, Token, TokenRefresh, 
     PasswordChange, PasswordResetRequest, PasswordReset,
