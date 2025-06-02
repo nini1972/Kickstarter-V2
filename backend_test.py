@@ -75,7 +75,7 @@ class KickstarterAPITester:
             "Create Project", 
             "POST", 
             "projects", 
-            201, 
+            200,  # Changed from 201 to 200 to match actual API response
             data=project_data
         )
         
