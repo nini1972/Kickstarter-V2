@@ -441,6 +441,7 @@ async def logout_user(
         )
 
 @auth_router.post("/demo-login")
+@limiter.limit(rate_limit_config.AUTH_LIMIT)
 async def demo_login(request: Request, response: Response):
     """Secure demo login with server-generated JWT tokens"""
     try:
