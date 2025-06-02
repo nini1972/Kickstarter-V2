@@ -990,5 +990,312 @@ def run_all_tests():
     else:
         logger.error(f"❌ {test_results['failed_tests']} tests failed.")
 
+def test_rate_limiting_and_enhanced_alerts():
+    """Test rate limiting and enhanced smart alerts system"""
+    logger.info("\n🧪 Testing Rate Limiting and Enhanced Smart Alerts")
+    
+    # Test rate limiting on health endpoint (30/minute)
+    try:
+        logger.info("Testing health endpoint rate limiting (30/minute)...")
+        
+        # Make 35 requests to exceed the rate limit
+        successful_requests = 0
+        rate_limited_requests = 0
+        
+        for i in range(35):
+            response = requests.get(f"{BACKEND_URL}/health")
+            
+            if response.status_code == 200:
+                successful_requests += 1
+            elif response.status_code == 429:  # Too Many Requests
+                rate_limited_requests += 1
+                logger.info(f"Request {i+1}: Rate limited (429 Too Many Requests)")
+            
+            # Small delay to avoid overwhelming the server
+            time.sleep(0.1)
+        
+        # Check if rate limiting is working
+        rate_limiting_working = rate_limited_requests > 0
+        
+        log_test_result("Health Endpoint Rate Limiting (30/minute)", 
+                       rate_limiting_working, 
+                       f"Successful requests: {successful_requests}, Rate limited requests: {rate_limited_requests}")
+    except Exception as e:
+        log_test_result("Health Endpoint Rate Limiting", False, f"Error: {str(e)}")
+    
+    # Test rate limiting on projects endpoint (20/minute)
+    try:
+        logger.info("Testing projects endpoint rate limiting (20/minute)...")
+        
+        # Make 25 requests to exceed the rate limit
+        successful_requests = 0
+        rate_limited_requests = 0
+        
+        for i in range(25):
+            response = requests.get(f"{BACKEND_URL}/projects")
+            
+            if response.status_code == 200:
+                successful_requests += 1
+            elif response.status_code == 429:  # Too Many Requests
+                rate_limited_requests += 1
+                logger.info(f"Request {i+1}: Rate limited (429 Too Many Requests)")
+            
+            # Small delay to avoid overwhelming the server
+            time.sleep(0.1)
+        
+        # Check if rate limiting is working
+        rate_limiting_working = rate_limited_requests > 0
+        
+        log_test_result("Projects Endpoint Rate Limiting (20/minute)", 
+                       rate_limiting_working, 
+                       f"Successful requests: {successful_requests}, Rate limited requests: {rate_limited_requests}")
+    except Exception as e:
+        log_test_result("Projects Endpoint Rate Limiting", False, f"Error: {str(e)}")
+    
+    # Test rate limiting on batch endpoint (10/hour)
+    created_project_ids = []
+    try:
+        # Create test projects for batch processing
+        logger.info("Creating test projects for batch processing rate limit testing...")
+        for i in range(3):
+            project_data = generate_test_project(i)
+            response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+            if response.status_code == 200:
+                project_id = response.json().get("id")
+                created_project_ids.append(project_id)
+                logger.info(f"Created test project {i+1} with ID: {project_id}")
+        
+        # Make 12 requests to exceed the rate limit (10/hour)
+        successful_requests = 0
+        rate_limited_requests = 0
+        
+        for i in range(12):
+            response = requests.post(
+                f"{BACKEND_URL}/projects/batch-analyze", 
+                json={
+                    "project_ids": created_project_ids,
+                    "batch_size": len(created_project_ids)
+                }
+            )
+            
+            if response.status_code == 200:
+                successful_requests += 1
+            elif response.status_code == 429:  # Too Many Requests
+                rate_limited_requests += 1
+                logger.info(f"Request {i+1}: Rate limited (429 Too Many Requests)")
+            
+            # Small delay to avoid overwhelming the server
+            time.sleep(0.2)
+        
+        # Check if rate limiting is working
+        rate_limiting_working = rate_limited_requests > 0
+        
+        log_test_result("Batch Processing Rate Limiting (10/hour)", 
+                       rate_limiting_working, 
+                       f"Successful requests: {successful_requests}, Rate limited requests: {rate_limited_requests}")
+    except Exception as e:
+        log_test_result("Batch Processing Rate Limiting", False, f"Error: {str(e)}")
+    finally:
+        # Clean up test projects
+        for project_id in created_project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+            except:
+                pass
+    
+    # Test rate limiting on alerts endpoint (50/minute)
+    try:
+        logger.info("Testing alerts endpoint rate limiting (50/minute)...")
+        
+        # Make 55 requests to exceed the rate limit
+        successful_requests = 0
+        rate_limited_requests = 0
+        
+        for i in range(55):
+            response = requests.get(f"{BACKEND_URL}/alerts")
+            
+            if response.status_code == 200:
+                successful_requests += 1
+            elif response.status_code == 429:  # Too Many Requests
+                rate_limited_requests += 1
+                logger.info(f"Request {i+1}: Rate limited (429 Too Many Requests)")
+            
+            # Small delay to avoid overwhelming the server
+            time.sleep(0.05)
+        
+        # Check if rate limiting is working
+        rate_limiting_working = rate_limited_requests > 0
+        
+        log_test_result("Alerts Endpoint Rate Limiting (50/minute)", 
+                       rate_limiting_working, 
+                       f"Successful requests: {successful_requests}, Rate limited requests: {rate_limited_requests}")
+    except Exception as e:
+        log_test_result("Alerts Endpoint Rate Limiting", False, f"Error: {str(e)}")
+    
+    # Test enhanced smart alerts
+    created_project_ids = []
+    try:
+        # Create test projects with specific characteristics to trigger different alerts
+        logger.info("Creating test projects for enhanced alerts testing...")
+        
+        projects_data = [
+            # High funding project (should trigger high priority alert)
+            {
+                "name": f"High Funding Project {uuid.uuid4()}",
+                "creator": "Test Creator",
+                "url": "https://www.kickstarter.com/test-project-high-funding",
+                "description": "This project has high funding and is likely to succeed",
+                "category": "Technology",
+                "goal_amount": 10000.0,
+                "pledged_amount": 9000.0,  # 90% funded
+                "backers_count": 200,
+                "deadline": (datetime.utcnow() + timedelta(days=10)).isoformat(),
+                "launched_date": (datetime.utcnow() - timedelta(days=5)).isoformat(),
+                "status": "live"
+            },
+            # Deadline approaching project (should trigger medium priority alert)
+            {
+                "name": f"Deadline Approaching Project {uuid.uuid4()}",
+                "creator": "Test Creator",
+                "url": "https://www.kickstarter.com/test-project-deadline",
+                "description": "This project has a deadline approaching soon",
+                "category": "Games",
+                "goal_amount": 20000.0,
+                "pledged_amount": 12000.0,  # 60% funded
+                "backers_count": 150,
+                "deadline": (datetime.utcnow() + timedelta(days=3)).isoformat(),
+                "launched_date": (datetime.utcnow() - timedelta(days=27)).isoformat(),
+                "status": "live"
+            },
+            # Low risk project (should trigger medium/high priority alert)
+            {
+                "name": f"Low Risk Project {uuid.uuid4()}",
+                "creator": "Test Creator",
+                "url": "https://www.kickstarter.com/test-project-low-risk",
+                "description": "This is a low risk project with good funding",
+                "category": "Design",
+                "goal_amount": 5000.0,
+                "pledged_amount": 3500.0,  # 70% funded
+                "backers_count": 100,
+                "deadline": (datetime.utcnow() + timedelta(days=15)).isoformat(),
+                "launched_date": (datetime.utcnow() - timedelta(days=15)).isoformat(),
+                "status": "live"
+            }
+        ]
+        
+        # Create the test projects
+        for i, project_data in enumerate(projects_data):
+            response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+            if response.status_code == 200:
+                project_id = response.json().get("id")
+                created_project_ids.append(project_id)
+                logger.info(f"Created test project {i+1} with ID: {project_id}")
+        
+        # Wait a moment for the projects to be processed
+        logger.info("Waiting for projects to be processed...")
+        time.sleep(2)
+        
+        # Get alerts
+        logger.info("Retrieving alerts...")
+        response = requests.get(f"{BACKEND_URL}/alerts")
+        
+        if response.status_code == 200:
+            alerts_data = response.json()
+            alerts = alerts_data.get("alerts", [])
+            
+            # Check if alerts were generated
+            alerts_generated = len(alerts) > 0
+            
+            log_test_result("Enhanced Alerts - Generation", 
+                           alerts_generated, 
+                           f"Generated {len(alerts)} alerts")
+            
+            if alerts_generated:
+                # Check for priority levels in alerts
+                priority_levels = set(alert.get("priority", "").upper() for alert in alerts)
+                has_multiple_priorities = len(priority_levels) > 1
+                
+                log_test_result("Enhanced Alerts - Priority Levels", 
+                               has_multiple_priorities, 
+                               f"Priority levels found: {priority_levels}")
+                
+                # Check for action items in alerts
+                has_action_items = any("action_items" in alert for alert in alerts)
+                
+                if has_action_items:
+                    sample_action_items = next((alert.get("action_items", []) for alert in alerts if "action_items" in alert), [])
+                    log_test_result("Enhanced Alerts - Action Items", 
+                                   True, 
+                                   f"Action items found: {sample_action_items[:2]}...")
+                else:
+                    log_test_result("Enhanced Alerts - Action Items", 
+                                   False, 
+                                   "No action items found in alerts")
+                
+                # Check for confidence levels in alerts
+                has_confidence_levels = any("confidence_level" in alert for alert in alerts)
+                
+                if has_confidence_levels:
+                    sample_confidence = next((alert.get("confidence_level", "") for alert in alerts if "confidence_level" in alert), "")
+                    log_test_result("Enhanced Alerts - Confidence Levels", 
+                                   True, 
+                                   f"Confidence level found: {sample_confidence}")
+                else:
+                    log_test_result("Enhanced Alerts - Confidence Levels", 
+                                   False, 
+                                   "No confidence levels found in alerts")
+        else:
+            log_test_result("Enhanced Alerts - Retrieval", 
+                           False, 
+                           f"Failed to retrieve alerts: {response.status_code} - {response.text}")
+    except Exception as e:
+        log_test_result("Enhanced Smart Alerts", False, f"Error: {str(e)}")
+    finally:
+        # Clean up test projects
+        for project_id in created_project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+            except:
+                pass
+
+def test_comprehensive_phase2a():
+    """Run comprehensive tests for all Phase 2A components"""
+    logger.info("\n🚀 Starting Comprehensive Phase 2A Testing")
+    
+    # Test database indexing
+    test_health_endpoint()
+    
+    # Test Redis caching
+    test_redis_cache_with_recommendations()
+    test_redis_health_check()
+    
+    # Test batch AI processing
+    test_batch_processing_endpoint()
+    test_batch_vs_individual_performance()
+    test_batch_processing_error_handling()
+    test_batch_processing_cache_integration()
+    
+    # Test rate limiting and enhanced smart alerts
+    test_rate_limiting_and_enhanced_alerts()
+    
+    # Test CRUD operations
+    test_project_crud()
+    
+    # Print test summary
+    logger.info("\n📊 PHASE 2A COMPREHENSIVE TEST SUMMARY")
+    logger.info(f"Total Tests: {test_results['total_tests']}")
+    logger.info(f"Passed: {test_results['passed_tests']}")
+    logger.info(f"Failed: {test_results['failed_tests']}")
+    logger.info(f"Skipped: {test_results['skipped_tests']}")
+    
+    success_rate = (test_results['passed_tests'] / test_results['total_tests']) * 100 if test_results['total_tests'] > 0 else 0
+    logger.info(f"Success Rate: {success_rate:.2f}%")
+    
+    if test_results['failed_tests'] == 0:
+        logger.info("✅ All Phase 2A tests passed successfully!")
+    else:
+        logger.error(f"❌ {test_results['failed_tests']} tests failed.")
+
 if __name__ == "__main__":
-    run_all_tests()
+    # Run comprehensive tests for all Phase 2A components
+    test_comprehensive_phase2a()
