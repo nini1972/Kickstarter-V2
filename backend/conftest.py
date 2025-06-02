@@ -18,7 +18,7 @@ from mongomock_motor import AsyncMongoMockClient
 from server import app
 from database.connection import DatabaseManager
 from services.cache_service import CacheService
-from services.ai_service import AIService
+from services.ai_service import AIAnalysisService
 from services.circuit_breaker import CircuitBreakerRegistry
 from config.settings import (
     db_config, redis_config, openai_config, auth_config
@@ -105,7 +105,7 @@ async def mock_cache_service():
 @pytest_asyncio.fixture
 async def mock_ai_service():
     """Mock AI service for testing"""
-    ai_service = MagicMock(spec=AIService)
+    ai_service = MagicMock(spec=AIAnalysisService)
     
     # Mock AI analysis response
     mock_analysis = {
@@ -119,7 +119,7 @@ async def mock_ai_service():
     
     ai_service.analyze_project = AsyncMock(return_value=mock_analysis)
     ai_service.get_recommendations = AsyncMock(return_value=[])
-    ai_service.batch_analyze = AsyncMock(return_value={"analyses": []})
+    ai_service.batch_analyze_projects = AsyncMock(return_value={"analyses": []})
     
     yield ai_service
 
