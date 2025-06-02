@@ -710,6 +710,64 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def create_database_indexes():
+    """Create MongoDB indexes for optimal query performance"""
+    try:
+        logger.info("Creating database indexes for optimal performance...")
+        
+        # Projects collection indexes
+        await db.projects.create_index([("category", 1), ("risk_level", 1)], background=True)
+        await db.projects.create_index([("status", 1), ("deadline", 1)], background=True)
+        await db.projects.create_index([("id", 1)], unique=True, background=True)
+        await db.projects.create_index([("status", 1)], background=True)
+        await db.projects.create_index([("risk_level", 1)], background=True)
+        await db.projects.create_index([("category", 1)], background=True)
+        await db.projects.create_index([("deadline", 1)], background=True)
+        await db.projects.create_index([("created_at", -1)], background=True)
+        await db.projects.create_index([("updated_at", -1)], background=True)
+        
+        # Compound index for common dashboard queries
+        await db.projects.create_index([
+            ("status", 1), 
+            ("category", 1), 
+            ("risk_level", 1)
+        ], background=True)
+        
+        # Index for AI analysis queries
+        await db.projects.create_index([
+            ("ai_analysis.success_probability", -1),
+            ("status", 1)
+        ], background=True)
+        
+        # Investments collection indexes
+        await db.investments.create_index([("id", 1)], unique=True, background=True)
+        await db.investments.create_index([("project_id", 1)], background=True)
+        await db.investments.create_index([("investment_date", -1)], background=True)
+        await db.investments.create_index([("created_at", -1)], background=True)
+        
+        # Compound index for investment analytics
+        await db.investments.create_index([
+            ("project_id", 1),
+            ("investment_date", -1)
+        ], background=True)
+        
+        # Alert settings collection indexes
+        await db.alert_settings.create_index([("user_id", 1)], unique=True, background=True)
+        
+        logger.info("✅ Database indexes created successfully!")
+        
+        # Log index information for monitoring
+        projects_indexes = await db.projects.list_indexes().to_list(length=None)
+        investments_indexes = await db.investments.list_indexes().to_list(length=None)
+        
+        logger.info(f"📊 Projects collection has {len(projects_indexes)} indexes")
+        logger.info(f"📊 Investments collection has {len(investments_indexes)} indexes")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to create database indexes: {e}")
+        # Don't fail startup if indexes fail, just log the error
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
