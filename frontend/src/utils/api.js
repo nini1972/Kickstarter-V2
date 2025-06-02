@@ -1,31 +1,19 @@
-// API utility functions with authentication for Kickstarter Investment Tracker
+// API utility functions with secure cookie-based authentication for Kickstarter Investment Tracker
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL ? `${process.env.REACT_APP_BACKEND_URL}/api` : 'http://localhost:8001/api';
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  return localStorage.getItem('auth_token');
-};
-
-// Create authenticated headers
+// Create authenticated headers - no longer need Authorization header with httpOnly cookies
 const createAuthHeaders = () => {
-  const token = getAuthToken();
-  const headers = {
+  return {
     'Content-Type': 'application/json',
   };
-  
-  if (token) {
-    // Always include Authorization header, even for demo token
-    headers.Authorization = `Bearer ${token}`;
-  }
-  
-  return headers;
 };
 
-// Generic API call function
+// Generic API call function with secure cookie authentication
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const config = {
     headers: createAuthHeaders(),
+    credentials: 'include', // CRITICAL: Include httpOnly cookies for authentication
     ...options,
   };
 
@@ -37,10 +25,10 @@ export const apiCall = async (endpoint, options = {}) => {
   try {
     const response = await fetch(url, config);
     
-    // If unauthorized, clear the token and reload
+    // If unauthorized, redirect to login (cookies have expired or been cleared)
     if (response.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
+      // With cookie-based auth, we just need to reload the page
+      // The AuthContext will detect the missing cookies and show login
       window.location.reload();
       return;
     }
