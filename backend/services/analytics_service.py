@@ -24,9 +24,21 @@ class AnalyticsService:
         self.investments_collection = database.investments
         self.users_collection = database.users
     
-    async def get_dashboard_analytics(self, user_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get comprehensive dashboard analytics"""
+    async def get_dashboard_analytics(self, user_id: Optional[str] = None, use_optimization: bool = True) -> Dict[str, Any]:
+        """Get comprehensive dashboard analytics with optional optimization"""
         try:
+            # Use optimized version if enabled
+            if use_optimization and db_optimization_service:
+                logger.info("📊 Using optimized dashboard analytics...")
+                optimized_analytics = await db_optimization_service.get_optimized_dashboard_analytics(user_id)
+                if optimized_analytics:
+                    return optimized_analytics
+                else:
+                    logger.warning("⚠️ Optimized analytics failed, falling back to standard method")
+            
+            # Fallback to original implementation
+            logger.info("📊 Using standard dashboard analytics...")
+            
             # Check cache first
             cache_key = f"dashboard_analytics_{user_id or 'global'}"
             cached_analytics = await cache_service.get(cache_key)
