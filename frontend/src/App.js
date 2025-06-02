@@ -113,9 +113,12 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppProvider>
+          <AppContent />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </AppProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }
