@@ -267,17 +267,81 @@ export const useInvestments = () => {
   });
 };
 
+// Investments Hooks
+export const useInvestments = () => {
+  return useQuery({
+    queryKey: queryKeys.investments,
+    queryFn: api.getInvestments,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 export const useCreateInvestment = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: api.createInvestment,
+    onMutate: async (newInvestment) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.investments });
+      
+      const previousInvestments = queryClient.getQueryData(queryKeys.investments);
+      
+      queryClient.setQueryData(queryKeys.investments, (old) => {
+        const optimisticInvestment = {
+          ...newInvestment,
+          id: `temp-${Date.now()}`,
+          investment_date: new Date().toISOString(),
+        };
+        return [...(old || []), optimisticInvestment];
+      });
+      
+      return { previousInvestments };
+    },
+    onError: (err, newInvestment, context) => {
+      queryClient.setQueryData(queryKeys.investments, context.previousInvestments);
+      toast.error('Failed to add investment');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments });
       toast.success('Investment added successfully!');
     },
-    onError: () => {
-      toast.error('Failed to add investment. Please try again.');
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments });
+    },
+  });
+};
+
+export const useAddInvestment = () => {
+  return useCreateInvestment(); // Alias for backwards compatibility
+};
+
+export const useDeleteInvestment = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (investmentId) => {
+      const { data } = await apiClient.delete(`/investments/${investmentId}`);
+      return data;
+    },
+    onMutate: async (investmentId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.investments });
+      
+      const previousInvestments = queryClient.getQueryData(queryKeys.investments);
+      
+      queryClient.setQueryData(queryKeys.investments, (old) => {
+        return old?.filter(investment => investment.id !== investmentId) || [];
+      });
+      
+      return { previousInvestments };
+    },
+    onError: (err, investmentId, context) => {
+      queryClient.setQueryData(queryKeys.investments, context.previousInvestments);
+      toast.error('Failed to delete investment');
+    },
+    onSuccess: () => {
+      toast.success('Investment deleted successfully');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments });
     },
   });
 };
