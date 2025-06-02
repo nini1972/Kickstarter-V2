@@ -203,7 +203,7 @@ async def list_projects(
     status: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(app_config.DEFAULT_PAGE_SIZE, ge=1, le=100),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """List projects with filtering"""
     try:
@@ -222,7 +222,7 @@ async def list_projects(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/projects/{project_id}", response_model=KickstarterProject)
-async def get_project(project_id: str, current_user: User = Depends(get_current_user)):
+async def get_project(project_id: str, current_user: TokenData = Depends(get_current_user)):
     """Get project by ID"""
     try:
         project = await project_service.get_project(project_id)
@@ -239,7 +239,7 @@ async def get_project(project_id: str, current_user: User = Depends(get_current_
 async def update_project(
     project_id: str,
     project_data: ProjectUpdate,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Update project"""
     try:
@@ -254,7 +254,7 @@ async def update_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/projects/{project_id}")
-async def delete_project(project_id: str, current_user: User = Depends(get_current_user)):
+async def delete_project(project_id: str, current_user: TokenData = Depends(get_current_user)):
     """Delete project"""
     try:
         success = await project_service.delete_project(project_id, current_user.id)
@@ -268,7 +268,7 @@ async def delete_project(project_id: str, current_user: User = Depends(get_curre
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/projects/stats", response_model=ProjectStats)
-async def get_project_stats(current_user: User = Depends(get_current_user)):
+async def get_project_stats(current_user: TokenData = Depends(get_current_user)):
     """Get project statistics"""
     try:
         stats = await project_service.get_project_stats(current_user.id)
@@ -283,7 +283,7 @@ async def get_project_stats(current_user: User = Depends(get_current_user)):
 async def batch_analyze_projects(
     request: Request,
     batch_request: BatchAnalyzeRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Batch analyze projects with AI"""
     try:
@@ -299,7 +299,7 @@ async def batch_analyze_projects(
 async def create_investment(
     request: Request,
     investment_data: InvestmentCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Create a new investment"""
     try:
@@ -317,7 +317,7 @@ async def list_investments(
     status: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(app_config.DEFAULT_PAGE_SIZE, ge=1, le=100),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """List investments with filtering"""
     try:
@@ -334,7 +334,7 @@ async def list_investments(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/investments/{investment_id}", response_model=Investment)
-async def get_investment(investment_id: str, current_user: User = Depends(get_current_user)):
+async def get_investment(investment_id: str, current_user: TokenData = Depends(get_current_user)):
     """Get investment by ID"""
     try:
         investment = await investment_service.get_investment(investment_id)
@@ -351,7 +351,7 @@ async def get_investment(investment_id: str, current_user: User = Depends(get_cu
 async def update_investment(
     investment_id: str,
     investment_data: InvestmentUpdate,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Update investment"""
     try:
@@ -366,7 +366,7 @@ async def update_investment(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/investments/{investment_id}")
-async def delete_investment(investment_id: str, current_user: User = Depends(get_current_user)):
+async def delete_investment(investment_id: str, current_user: TokenData = Depends(get_current_user)):
     """Delete investment"""
     try:
         success = await investment_service.delete_investment(investment_id, current_user.id)
@@ -380,7 +380,7 @@ async def delete_investment(investment_id: str, current_user: User = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/investments/stats", response_model=PortfolioStats)
-async def get_portfolio_stats(current_user: User = Depends(get_current_user)):
+async def get_portfolio_stats(current_user: TokenData = Depends(get_current_user)):
     """Get portfolio statistics"""
     try:
         stats = await investment_service.get_portfolio_stats(current_user.id)
@@ -390,7 +390,7 @@ async def get_portfolio_stats(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/investments/analytics", response_model=PortfolioAnalytics)
-async def get_portfolio_analytics(current_user: User = Depends(get_current_user)):
+async def get_portfolio_analytics(current_user: TokenData = Depends(get_current_user)):
     """Get portfolio analytics"""
     try:
         analytics = await investment_service.get_portfolio_analytics(current_user.id)
@@ -404,7 +404,7 @@ async def get_portfolio_analytics(current_user: User = Depends(get_current_user)
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def get_dashboard_analytics(
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get comprehensive dashboard analytics"""
     try:
@@ -419,7 +419,7 @@ async def get_dashboard_analytics(
 async def get_funding_trends(
     request: Request,
     days: int = Query(30, ge=1, le=365),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get funding trend data"""
     try:
@@ -433,7 +433,7 @@ async def get_funding_trends(
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def get_roi_predictions(
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get ROI predictions"""
     try:
@@ -447,7 +447,7 @@ async def get_roi_predictions(
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def get_risk_analytics(
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get risk analytics"""
     try:
@@ -461,7 +461,7 @@ async def get_risk_analytics(
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def get_market_insights(
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get market insights"""
     try:
@@ -477,7 +477,7 @@ async def get_market_insights(
 async def get_alerts(
     request: Request,
     limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get smart alerts"""
     try:
@@ -497,7 +497,7 @@ async def get_alerts(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/alerts/preferences")
-async def get_alert_preferences(current_user: User = Depends(get_current_user)):
+async def get_alert_preferences(current_user: TokenData = Depends(get_current_user)):
     """Get user alert preferences"""
     try:
         preferences = await alert_service.get_user_alert_preferences(current_user.id)
@@ -509,7 +509,7 @@ async def get_alert_preferences(current_user: User = Depends(get_current_user)):
 @app.put("/api/alerts/preferences")
 async def update_alert_preferences(
     preferences: Dict[str, Any],
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Update user alert preferences"""
     try:
@@ -525,7 +525,7 @@ async def update_alert_preferences(
 async def get_recommendations(
     request: Request,
     limit: int = Query(10, ge=1, le=50),
-    current_user: User = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user)
 ):
     """Get AI-powered investment recommendations"""
     try:
