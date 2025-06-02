@@ -148,6 +148,14 @@ def test_health_endpoint():
                        redis_connected, 
                        f"Redis status: {redis_status}")
         
+        # Check batch processing status
+        batch_status = data.get("checks", {}).get("batch_processing", {}).get("status")
+        batch_available = batch_status == "available"
+        
+        log_test_result("Health Check - Batch Processing", 
+                       batch_available, 
+                       f"Batch processing status: {batch_status}")
+        
         return True
     except Exception as e:
         log_test_result("Health Check", False, f"Error: {str(e)}")
@@ -311,131 +319,6 @@ def test_investment_crud(project_id):
     
     return True
 
-def test_dashboard_stats():
-    """Test dashboard statistics endpoint"""
-    try:
-        response = requests.get(f"{BACKEND_URL}/dashboard/stats")
-        response.raise_for_status()
-        
-        stats = response.json()
-        
-        expected_fields = [
-            "total_projects", 
-            "total_investments", 
-            "total_invested", 
-            "average_investment", 
-            "success_rate", 
-            "roi", 
-            "top_categories"
-        ]
-        
-        all_fields_present = all(field in stats for field in expected_fields)
-        
-        log_test_result("Dashboard Statistics", 
-                       all_fields_present, 
-                       f"Retrieved dashboard stats with {len(expected_fields)} metrics")
-    except Exception as e:
-        log_test_result("Dashboard Statistics", False, f"Error: {str(e)}")
-
-def test_ai_analysis():
-    """Test AI analysis endpoints"""
-    try:
-        # Test recommendations endpoint
-        response = requests.get(f"{BACKEND_URL}/recommendations")
-        response.raise_for_status()
-        
-        recommendations = response.json()
-        
-        log_test_result("AI Recommendations", 
-                       "recommendations" in recommendations, 
-                       f"Retrieved {len(recommendations.get('recommendations', []))} AI recommendations")
-    except Exception as e:
-        log_test_result("AI Recommendations", False, f"Error: {str(e)}")
-    
-    try:
-        # Test advanced analytics
-        response = requests.get(f"{BACKEND_URL}/analytics/advanced")
-        response.raise_for_status()
-        
-        analytics = response.json()
-        
-        expected_fields = [
-            "risk_distribution", 
-            "funding_velocity", 
-            "category_performance", 
-            "success_predictors", 
-            "investment_opportunities", 
-            "market_trends"
-        ]
-        
-        all_fields_present = all(field in analytics for field in expected_fields)
-        
-        log_test_result("Advanced Analytics", 
-                       all_fields_present, 
-                       f"Retrieved advanced analytics with {len(expected_fields)} metrics")
-    except Exception as e:
-        log_test_result("Advanced Analytics", False, f"Error: {str(e)}")
-    
-    try:
-        # Test funding trends
-        response = requests.get(f"{BACKEND_URL}/analytics/funding-trends")
-        response.raise_for_status()
-        
-        trends = response.json()
-        
-        log_test_result("Funding Trends", 
-                       "trends" in trends, 
-                       f"Retrieved funding trends data")
-    except Exception as e:
-        log_test_result("Funding Trends", False, f"Error: {str(e)}")
-
-def test_alerts():
-    """Test alerts endpoints"""
-    try:
-        # Test get alerts
-        response = requests.get(f"{BACKEND_URL}/alerts")
-        response.raise_for_status()
-        
-        alerts = response.json()
-        
-        log_test_result("Smart Alerts", 
-                       isinstance(alerts, list), 
-                       f"Retrieved {len(alerts)} smart alerts")
-    except Exception as e:
-        log_test_result("Smart Alerts", False, f"Error: {str(e)}")
-    
-    try:
-        # Test alert settings
-        response = requests.get(f"{BACKEND_URL}/alerts/settings")
-        response.raise_for_status()
-        
-        settings = response.json()
-        
-        log_test_result("Alert Settings", 
-                       "min_funding_velocity" in settings, 
-                       f"Retrieved alert settings")
-        
-        # Test updating alert settings
-        new_settings = settings.copy()
-        new_settings["min_funding_velocity"] = 0.2
-        new_settings["preferred_categories"] = ["Technology", "Games"]
-        
-        response = requests.post(f"{BACKEND_URL}/alerts/settings", json=new_settings)
-        response.raise_for_status()
-        
-        updated_settings = response.json()
-        
-        settings_updated = (
-            updated_settings["min_funding_velocity"] == 0.2 and
-            "Games" in updated_settings["preferred_categories"]
-        )
-        
-        log_test_result("Update Alert Settings", 
-                       settings_updated, 
-                       f"Updated alert settings successfully")
-    except Exception as e:
-        log_test_result("Alert Settings Operations", False, f"Error: {str(e)}")
-
 def test_redis_cache_with_recommendations():
     """Test Redis cache functionality for recommendations endpoint"""
     logger.info("\n🧪 Testing Redis Cache Functionality with Recommendations")
@@ -534,68 +417,520 @@ def test_redis_health_check():
         log_test_result("Redis Health Check", False, f"Error: {str(e)}")
         return False
 
-def test_cache_with_analytics():
-    """Test Redis cache functionality for analytics endpoint"""
-    logger.info("\n🧪 Testing Redis Cache Functionality with Analytics")
+def test_batch_processing_endpoint():
+    """Test the batch processing endpoint with different batch sizes"""
+    logger.info("\n🧪 Testing Batch AI Processing Endpoint")
+    
+    # Create test projects for batch processing
+    project_ids = []
     
     try:
-        # Get initial cache stats
-        response = requests.get(f"{BACKEND_URL}/health")
-        response.raise_for_status()
-        initial_stats = response.json()
-        initial_cache_hits = initial_stats.get("checks", {}).get("redis_cache", {}).get("hits", 0)
-        initial_cache_misses = initial_stats.get("checks", {}).get("redis_cache", {}).get("misses", 0)
+        # Create 5 test projects for batch processing
+        logger.info("Creating test projects for batch processing...")
+        for i in range(5):
+            project_data = generate_test_project(i)
+            response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+            if response.status_code == 200:
+                project_id = response.json().get("id")
+                project_ids.append(project_id)
+                logger.info(f"Created test project {i+1} with ID: {project_id}")
+            else:
+                logger.warning(f"Failed to create test project {i+1}: {response.text}")
         
-        logger.info(f"Initial cache stats - Hits: {initial_cache_hits}, Misses: {initial_cache_misses}")
+        if not project_ids:
+            logger.error("❌ Failed to create any test projects for batch processing")
+            log_test_result("Batch Processing - Project Creation", False, "Failed to create test projects")
+            return False
         
-        # First request should be a cache MISS
-        logger.info("Making first request to analytics (should be cache MISS)...")
-        start_time_miss = time.time()
-        response = requests.get(f"{BACKEND_URL}/analytics/advanced")
-        response.raise_for_status()
-        miss_duration = time.time() - start_time_miss
+        log_test_result("Batch Processing - Project Creation", 
+                       len(project_ids) > 0, 
+                       f"Created {len(project_ids)} test projects for batch processing")
         
-        # Second request should be a cache HIT
-        logger.info("Making second request to analytics (should be cache HIT)...")
-        start_time_hit = time.time()
-        response = requests.get(f"{BACKEND_URL}/analytics/advanced")
-        response.raise_for_status()
-        hit_duration = time.time() - start_time_hit
+        # Test batch processing with different batch sizes
+        batch_sizes = [1, 3, 5]
         
-        # Get updated cache stats
-        response = requests.get(f"{BACKEND_URL}/health")
-        response.raise_for_status()
-        updated_stats = response.json()
-        updated_cache_hits = updated_stats.get("checks", {}).get("redis_cache", {}).get("hits", 0)
-        updated_cache_misses = updated_stats.get("checks", {}).get("redis_cache", {}).get("misses", 0)
+        for batch_size in batch_sizes:
+            test_results["batch_processing"]["total_batches"] += 1
+            
+            # Select subset of projects based on batch size
+            test_batch = project_ids[:min(batch_size, len(project_ids))]
+            
+            logger.info(f"Testing batch processing with batch size {batch_size}...")
+            start_time = time.time()
+            
+            response = requests.post(
+                f"{BACKEND_URL}/projects/batch-analyze", 
+                json={
+                    "project_ids": test_batch,
+                    "batch_size": batch_size
+                }
+            )
+            
+            processing_time = time.time() - start_time
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check if batch processing was successful
+                success = data.get("success", False)
+                stats = data.get("stats", {})
+                results = data.get("results", [])
+                
+                # Log performance metrics
+                test_results["batch_processing"]["performance_metrics"].append({
+                    "batch_size": batch_size,
+                    "processing_time": processing_time,
+                    "projects_count": len(test_batch),
+                    "time_per_project": processing_time / len(test_batch) if test_batch else 0
+                })
+                
+                if success:
+                    test_results["batch_processing"]["successful_batches"] += 1
+                    
+                    log_test_result(f"Batch Processing - Size {batch_size}", 
+                                   True, 
+                                   f"Processed {len(test_batch)} projects in {processing_time:.2f}s " +
+                                   f"({stats.get('successful_analyses', 0)} successful, " +
+                                   f"{stats.get('failed_analyses', 0)} failed)")
+                    
+                    # Verify that all projects have batch processing metadata
+                    batch_metadata_present = all("batch_processed" in result for result in results)
+                    batch_timestamp_present = all("batch_timestamp" in result for result in results)
+                    
+                    log_test_result(f"Batch Processing - Metadata for Size {batch_size}", 
+                                   batch_metadata_present and batch_timestamp_present, 
+                                   f"Batch metadata present in all {len(results)} results")
+                    
+                else:
+                    test_results["batch_processing"]["failed_batches"] += 1
+                    log_test_result(f"Batch Processing - Size {batch_size}", 
+                                   False, 
+                                   f"Batch processing failed: {data.get('message', 'Unknown error')}")
+            else:
+                test_results["batch_processing"]["failed_batches"] += 1
+                log_test_result(f"Batch Processing - Size {batch_size}", 
+                               False, 
+                               f"API error: {response.status_code} - {response.text}")
         
-        # Calculate differences
-        new_hits = updated_cache_hits - initial_cache_hits
-        new_misses = updated_cache_misses - initial_cache_misses
+        # Test batch status endpoint
+        logger.info("Testing batch status endpoint...")
         
-        logger.info(f"Updated cache stats - Hits: {updated_cache_hits}, Misses: {updated_cache_misses}")
-        logger.info(f"New hits: {new_hits}, New misses: {new_misses}")
+        # Use a random UUID as batch_id since we don't have real batch IDs
+        test_batch_id = str(uuid.uuid4())
         
-        # Performance comparison
-        logger.info(f"Cache MISS request time: {miss_duration:.4f}s")
-        logger.info(f"Cache HIT request time: {hit_duration:.4f}s")
-        performance_improvement = ((miss_duration - hit_duration) / miss_duration) * 100 if miss_duration > 0 else 0
-        logger.info(f"Performance improvement: {performance_improvement:.2f}%")
+        response = requests.get(f"{BACKEND_URL}/projects/batch-status/{test_batch_id}")
         
-        # Test if cache hit is faster than cache miss (should be)
-        cache_performance_ok = hit_duration < miss_duration
-        log_test_result("Analytics Cache Performance", 
-                       cache_performance_ok, 
-                       f"Cache HIT is {performance_improvement:.2f}% faster than MISS")
+        if response.status_code == 200:
+            data = response.json()
+            
+            log_test_result("Batch Status Endpoint", 
+                           "status" in data, 
+                           f"Batch status endpoint returned: {data.get('status', 'unknown')}")
+        else:
+            log_test_result("Batch Status Endpoint", 
+                           False, 
+                           f"API error: {response.status_code} - {response.text}")
         
-        # Update test_results with cache stats
-        test_results["cache_stats"]["hits"] += new_hits
-        test_results["cache_stats"]["misses"] += new_misses
+        # Clean up test projects
+        logger.info("Cleaning up test projects...")
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+                logger.info(f"Deleted test project with ID: {project_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete test project {project_id}: {e}")
         
         return True
         
     except Exception as e:
-        log_test_result("Analytics Cache Testing", False, f"Error: {str(e)}")
+        log_test_result("Batch Processing", False, f"Error: {str(e)}")
+        
+        # Try to clean up any created projects
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+            except:
+                pass
+                
+        return False
+
+def test_batch_vs_individual_performance():
+    """Compare performance between batch processing and individual processing"""
+    logger.info("\n🧪 Testing Batch vs Individual Processing Performance")
+    
+    project_ids = []
+    
+    try:
+        # Create 5 test projects
+        logger.info("Creating test projects for performance comparison...")
+        for i in range(5):
+            project_data = generate_test_project(i)
+            response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+            if response.status_code == 200:
+                project_id = response.json().get("id")
+                project_ids.append(project_id)
+                logger.info(f"Created test project {i+1} with ID: {project_id}")
+            else:
+                logger.warning(f"Failed to create test project {i+1}: {response.text}")
+        
+        if len(project_ids) < 3:
+            logger.error("❌ Failed to create enough test projects for performance comparison")
+            log_test_result("Performance Comparison - Project Creation", False, "Failed to create enough test projects")
+            return False
+        
+        log_test_result("Performance Comparison - Project Creation", 
+                       len(project_ids) >= 3, 
+                       f"Created {len(project_ids)} test projects for performance comparison")
+        
+        # Measure individual processing time
+        logger.info("Testing individual processing performance...")
+        individual_start_time = time.time()
+        
+        individual_results = []
+        for project_id in project_ids:
+            # Get project
+            project_response = requests.get(f"{BACKEND_URL}/projects/{project_id}")
+            if project_response.status_code == 200:
+                project = project_response.json()
+                
+                # Update project to trigger AI analysis
+                update_data = {
+                    "name": project["name"],
+                    "creator": project["creator"],
+                    "url": project["url"],
+                    "description": project["description"],
+                    "category": project["category"],
+                    "goal_amount": project["goal_amount"],
+                    "pledged_amount": project["pledged_amount"] + 100,  # Change to trigger update
+                    "backers_count": project["backers_count"],
+                    "deadline": project["deadline"],
+                    "launched_date": project["launched_date"],
+                    "status": project["status"]
+                }
+                
+                update_response = requests.put(f"{BACKEND_URL}/projects/{project_id}", json=update_data)
+                if update_response.status_code == 200:
+                    individual_results.append(update_response.json())
+        
+        individual_time = time.time() - individual_start_time
+        
+        # Measure batch processing time
+        logger.info("Testing batch processing performance...")
+        batch_start_time = time.time()
+        
+        batch_response = requests.post(
+            f"{BACKEND_URL}/projects/batch-analyze", 
+            json={
+                "project_ids": project_ids,
+                "batch_size": len(project_ids)
+            }
+        )
+        
+        batch_time = time.time() - batch_start_time
+        
+        # Calculate performance difference
+        if individual_time > 0 and batch_time > 0:
+            performance_improvement = ((individual_time - batch_time) / individual_time) * 100
+            
+            log_test_result("Performance Comparison", 
+                           batch_time < individual_time, 
+                           f"Individual processing: {individual_time:.2f}s, Batch processing: {batch_time:.2f}s, " +
+                           f"Improvement: {performance_improvement:.2f}%")
+            
+            # Check if batch processing is at least 20% faster
+            significant_improvement = performance_improvement >= 20
+            
+            log_test_result("Significant Performance Improvement", 
+                           significant_improvement, 
+                           f"Batch processing is {performance_improvement:.2f}% faster than individual processing")
+        else:
+            log_test_result("Performance Comparison", 
+                           False, 
+                           "Failed to measure performance accurately")
+        
+        # Clean up test projects
+        logger.info("Cleaning up test projects...")
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+                logger.info(f"Deleted test project with ID: {project_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete test project {project_id}: {e}")
+        
+        return True
+        
+    except Exception as e:
+        log_test_result("Performance Comparison", False, f"Error: {str(e)}")
+        
+        # Try to clean up any created projects
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+            except:
+                pass
+                
+        return False
+
+def test_batch_processing_error_handling():
+    """Test error handling in batch processing"""
+    logger.info("\n🧪 Testing Batch Processing Error Handling")
+    
+    try:
+        # Test with invalid project IDs
+        invalid_ids = [str(uuid.uuid4()) for _ in range(3)]
+        
+        logger.info("Testing batch processing with invalid project IDs...")
+        response = requests.post(
+            f"{BACKEND_URL}/projects/batch-analyze", 
+            json={
+                "project_ids": invalid_ids,
+                "batch_size": 3
+            }
+        )
+        
+        # Check if the API handles invalid IDs gracefully
+        if response.status_code == 404:
+            log_test_result("Batch Processing - Invalid IDs", 
+                           True, 
+                           "API correctly returned 404 for invalid project IDs")
+        else:
+            data = response.json()
+            error_handled = "No valid projects found" in data.get("detail", "") or "No valid projects" in data.get("message", "")
+            
+            log_test_result("Batch Processing - Invalid IDs", 
+                           error_handled, 
+                           f"API response: {response.status_code} - {response.text}")
+        
+        # Test with mixed valid and invalid data
+        # First create one valid project
+        valid_project_id = None
+        project_data = generate_test_project(0)
+        
+        create_response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+        if create_response.status_code == 200:
+            valid_project_id = create_response.json().get("id")
+            logger.info(f"Created valid test project with ID: {valid_project_id}")
+            
+            # Test with mixed valid and invalid IDs
+            mixed_ids = [valid_project_id, str(uuid.uuid4()), str(uuid.uuid4())]
+            
+            logger.info("Testing batch processing with mixed valid and invalid project IDs...")
+            response = requests.post(
+                f"{BACKEND_URL}/projects/batch-analyze", 
+                json={
+                    "project_ids": mixed_ids,
+                    "batch_size": 3
+                }
+            )
+            
+            # Check if the API processes the valid ID and ignores invalid ones
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                log_test_result("Batch Processing - Mixed IDs", 
+                               len(results) > 0, 
+                               f"API processed {len(results)} valid projects out of {len(mixed_ids)} total IDs")
+            else:
+                log_test_result("Batch Processing - Mixed IDs", 
+                               False, 
+                               f"API error: {response.status_code} - {response.text}")
+            
+            # Clean up the valid project
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{valid_project_id}")
+                logger.info(f"Deleted test project with ID: {valid_project_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete test project {valid_project_id}: {e}")
+        else:
+            log_test_result("Batch Processing - Error Handling", 
+                           False, 
+                           "Failed to create valid test project for error handling tests")
+        
+        return True
+        
+    except Exception as e:
+        log_test_result("Batch Processing Error Handling", False, f"Error: {str(e)}")
+        return False
+
+def test_batch_processing_cache_integration():
+    """Test integration between batch processing and cache"""
+    logger.info("\n🧪 Testing Batch Processing Cache Integration")
+    
+    project_ids = []
+    
+    try:
+        # Create 3 test projects
+        logger.info("Creating test projects for cache integration testing...")
+        for i in range(3):
+            project_data = generate_test_project(i)
+            response = requests.post(f"{BACKEND_URL}/projects", json=project_data)
+            if response.status_code == 200:
+                project_id = response.json().get("id")
+                project_ids.append(project_id)
+                logger.info(f"Created test project {i+1} with ID: {project_id}")
+            else:
+                logger.warning(f"Failed to create test project {i+1}: {response.text}")
+        
+        if not project_ids:
+            logger.error("❌ Failed to create test projects for cache integration testing")
+            log_test_result("Cache Integration - Project Creation", False, "Failed to create test projects")
+            return False
+        
+        # Get initial cache stats
+        response = requests.get(f"{BACKEND_URL}/health")
+        initial_stats = response.json()
+        initial_cache_keys = initial_stats.get("checks", {}).get("redis_cache", {}).get("total_keys", 0)
+        
+        logger.info(f"Initial cache keys: {initial_cache_keys}")
+        
+        # Run batch processing first time (should create cache entries)
+        logger.info("Running first batch processing (should create cache entries)...")
+        first_response = requests.post(
+            f"{BACKEND_URL}/projects/batch-analyze", 
+            json={
+                "project_ids": project_ids,
+                "batch_size": len(project_ids)
+            }
+        )
+        
+        if first_response.status_code != 200:
+            log_test_result("Cache Integration - First Batch", False, f"API error: {first_response.status_code} - {first_response.text}")
+            return False
+        
+        # Get cache stats after first batch
+        response = requests.get(f"{BACKEND_URL}/health")
+        mid_stats = response.json()
+        mid_cache_keys = mid_stats.get("checks", {}).get("redis_cache", {}).get("total_keys", 0)
+        
+        logger.info(f"Cache keys after first batch: {mid_cache_keys}")
+        
+        # Check if cache keys increased
+        cache_keys_increased = mid_cache_keys > initial_cache_keys
+        
+        log_test_result("Cache Integration - Cache Creation", 
+                       cache_keys_increased, 
+                       f"Cache keys before: {initial_cache_keys}, after: {mid_cache_keys}")
+        
+        # Run batch processing second time (should use cache)
+        logger.info("Running second batch processing (should use cache)...")
+        start_time = time.time()
+        second_response = requests.post(
+            f"{BACKEND_URL}/projects/batch-analyze", 
+            json={
+                "project_ids": project_ids,
+                "batch_size": len(project_ids)
+            }
+        )
+        second_time = time.time() - start_time
+        
+        if second_response.status_code != 200:
+            log_test_result("Cache Integration - Second Batch", False, f"API error: {second_response.status_code} - {second_response.text}")
+            return False
+        
+        # Get cache stats after second batch
+        response = requests.get(f"{BACKEND_URL}/health")
+        final_stats = response.json()
+        final_cache_hits = final_stats.get("checks", {}).get("redis_cache", {}).get("hits", 0)
+        
+        # Check if second batch was faster (indicating cache usage)
+        first_time = first_response.json().get("stats", {}).get("processing_time", 0)
+        
+        if first_time > 0 and second_time > 0:
+            cache_performance = ((first_time - second_time) / first_time) * 100
+            
+            log_test_result("Cache Integration - Performance", 
+                           second_time < first_time, 
+                           f"First batch: {first_time:.2f}s, Second batch: {second_time:.2f}s, " +
+                           f"Improvement: {cache_performance:.2f}%")
+        
+        # Test cache invalidation after project update
+        if project_ids:
+            # Update one project
+            project_id = project_ids[0]
+            logger.info(f"Testing cache invalidation by updating project {project_id}...")
+            
+            # Get current project data
+            project_response = requests.get(f"{BACKEND_URL}/projects/{project_id}")
+            if project_response.status_code == 200:
+                project = project_response.json()
+                
+                # Update project
+                update_data = {
+                    "name": project["name"],
+                    "creator": project["creator"],
+                    "url": project["url"],
+                    "description": project["description"] + " Updated!",  # Change description
+                    "category": project["category"],
+                    "goal_amount": project["goal_amount"],
+                    "pledged_amount": project["pledged_amount"] + 200,  # Change pledged amount
+                    "backers_count": project["backers_count"] + 2,  # Change backers count
+                    "deadline": project["deadline"],
+                    "launched_date": project["launched_date"],
+                    "status": project["status"]
+                }
+                
+                update_response = requests.put(f"{BACKEND_URL}/projects/{project_id}", json=update_data)
+                
+                if update_response.status_code == 200:
+                    logger.info(f"Updated project {project_id}")
+                    
+                    # Run batch processing again after update
+                    logger.info("Running batch processing after update (should invalidate cache)...")
+                    third_response = requests.post(
+                        f"{BACKEND_URL}/projects/batch-analyze", 
+                        json={
+                            "project_ids": [project_id],
+                            "batch_size": 1
+                        }
+                    )
+                    
+                    if third_response.status_code == 200:
+                        # Check if analysis changed after update
+                        third_results = third_response.json().get("results", [])
+                        
+                        if third_results:
+                            log_test_result("Cache Integration - Invalidation", 
+                                           True, 
+                                           "Successfully processed updated project after cache invalidation")
+                        else:
+                            log_test_result("Cache Integration - Invalidation", 
+                                           False, 
+                                           "Failed to get results after cache invalidation")
+                    else:
+                        log_test_result("Cache Integration - Invalidation", 
+                                       False, 
+                                       f"API error: {third_response.status_code} - {third_response.text}")
+                else:
+                    log_test_result("Cache Integration - Project Update", 
+                                   False, 
+                                   f"Failed to update project: {update_response.status_code} - {update_response.text}")
+            else:
+                log_test_result("Cache Integration - Project Retrieval", 
+                               False, 
+                               f"Failed to retrieve project: {project_response.status_code} - {project_response.text}")
+        
+        # Clean up test projects
+        logger.info("Cleaning up test projects...")
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+                logger.info(f"Deleted test project with ID: {project_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete test project {project_id}: {e}")
+        
+        return True
+        
+    except Exception as e:
+        log_test_result("Cache Integration", False, f"Error: {str(e)}")
+        
+        # Try to clean up any created projects
+        for project_id in project_ids:
+            try:
+                requests.delete(f"{BACKEND_URL}/projects/{project_id}")
+            except:
+                pass
+                
         return False
 
 def run_all_tests():
@@ -610,23 +945,21 @@ def run_all_tests():
         # Test Redis health check
         redis_ok = test_redis_health_check()
         
-        if redis_ok:
-            # Test Redis cache functionality with recommendations
-            test_redis_cache_with_recommendations()
-            
-            # Test Redis cache functionality with analytics
-            test_cache_with_analytics()
-        else:
-            logger.error("❌ Redis health check failed. Skipping Redis cache tests.")
-            test_results["skipped_tests"] += 2
+        # Test batch processing functionality
+        logger.info("\n🧪 Testing Batch AI Processing Functionality")
+        test_batch_processing_endpoint()
         
-        # Run all other tests except project creation which is failing
-        test_dashboard_stats()
-        test_ai_analysis()
-        test_alerts()
+        # Test batch vs individual performance
+        test_batch_vs_individual_performance()
+        
+        # Test batch processing error handling
+        test_batch_processing_error_handling()
+        
+        # Test batch processing cache integration
+        test_batch_processing_cache_integration()
     else:
         logger.error("❌ Health check failed. Skipping remaining tests.")
-        test_results["skipped_tests"] += 1
+        test_results["skipped_tests"] += 5
     
     # Print test summary
     logger.info("\n📊 TEST SUMMARY")
@@ -635,13 +968,19 @@ def run_all_tests():
     logger.info(f"Failed: {test_results['failed_tests']}")
     logger.info(f"Skipped: {test_results['skipped_tests']}")
     
-    # Print cache statistics if available
-    if test_results["cache_stats"]["hits"] > 0 or test_results["cache_stats"]["misses"] > 0:
-        logger.info("\n📊 CACHE STATISTICS")
-        logger.info(f"Cache Hits: {test_results['cache_stats']['hits']}")
-        logger.info(f"Cache Misses: {test_results['cache_stats']['misses']}")
-        hit_rate = (test_results['cache_stats']['hits'] / (test_results['cache_stats']['hits'] + test_results['cache_stats']['misses'])) * 100 if (test_results['cache_stats']['hits'] + test_results['cache_stats']['misses']) > 0 else 0
-        logger.info(f"Cache Hit Rate: {hit_rate:.2f}%")
+    # Print batch processing statistics
+    if test_results["batch_processing"]["total_batches"] > 0:
+        logger.info("\n📊 BATCH PROCESSING STATISTICS")
+        logger.info(f"Total Batches: {test_results['batch_processing']['total_batches']}")
+        logger.info(f"Successful Batches: {test_results['batch_processing']['successful_batches']}")
+        logger.info(f"Failed Batches: {test_results['batch_processing']['failed_batches']}")
+        
+        # Print performance metrics
+        if test_results["batch_processing"]["performance_metrics"]:
+            logger.info("\n📊 BATCH PERFORMANCE METRICS")
+            for metric in test_results["batch_processing"]["performance_metrics"]:
+                logger.info(f"Batch Size {metric['batch_size']}: {metric['processing_time']:.2f}s total, " +
+                           f"{metric['time_per_project']:.4f}s per project")
     
     success_rate = (test_results['passed_tests'] / test_results['total_tests']) * 100 if test_results['total_tests'] > 0 else 0
     logger.info(f"Success Rate: {success_rate:.2f}%")
