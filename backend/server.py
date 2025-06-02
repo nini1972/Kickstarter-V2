@@ -215,7 +215,7 @@ async def list_projects(
             page=page,
             page_size=page_size
         )
-        projects = await project_service.list_projects(filters, current_user.id)
+        projects = await project_service.list_projects(filters, current_user.user_id)
         return projects
     except Exception as e:
         logger.error(f"Failed to list projects: {e}")
@@ -243,7 +243,7 @@ async def update_project(
 ):
     """Update project"""
     try:
-        project = await project_service.update_project(project_id, project_data, current_user.id)
+        project = await project_service.update_project(project_id, project_data, current_user.user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         return project
@@ -257,7 +257,7 @@ async def update_project(
 async def delete_project(project_id: str, current_user: TokenData = Depends(get_current_user)):
     """Delete project"""
     try:
-        success = await project_service.delete_project(project_id, current_user.id)
+        success = await project_service.delete_project(project_id, current_user.user_id)
         if not success:
             raise HTTPException(status_code=404, detail="Project not found")
         return {"message": "Project deleted successfully"}
@@ -271,7 +271,7 @@ async def delete_project(project_id: str, current_user: TokenData = Depends(get_
 async def get_project_stats(current_user: TokenData = Depends(get_current_user)):
     """Get project statistics"""
     try:
-        stats = await project_service.get_project_stats(current_user.id)
+        stats = await project_service.get_project_stats(current_user.user_id)
         return stats
     except Exception as e:
         logger.error(f"Failed to get project stats: {e}")
@@ -287,7 +287,7 @@ async def batch_analyze_projects(
 ):
     """Batch analyze projects with AI"""
     try:
-        result = await project_service.batch_analyze_projects(batch_request, current_user.id)
+        result = await project_service.batch_analyze_projects(batch_request, current_user.user_id)
         return result
     except Exception as e:
         logger.error(f"Batch analysis failed: {e}")
@@ -303,7 +303,7 @@ async def create_investment(
 ):
     """Create a new investment"""
     try:
-        investment = await investment_service.create_investment(investment_data, current_user.id)
+        investment = await investment_service.create_investment(investment_data, current_user.user_id)
         return investment
     except Exception as e:
         logger.error(f"Failed to create investment: {e}")
@@ -327,7 +327,7 @@ async def list_investments(
             page=page,
             page_size=page_size
         )
-        investments = await investment_service.list_investments(filters, current_user.id)
+        investments = await investment_service.list_investments(filters, current_user.user_id)
         return investments
     except Exception as e:
         logger.error(f"Failed to list investments: {e}")
@@ -355,7 +355,7 @@ async def update_investment(
 ):
     """Update investment"""
     try:
-        investment = await investment_service.update_investment(investment_id, investment_data, current_user.id)
+        investment = await investment_service.update_investment(investment_id, investment_data, current_user.user_id)
         if not investment:
             raise HTTPException(status_code=404, detail="Investment not found")
         return investment
@@ -369,7 +369,7 @@ async def update_investment(
 async def delete_investment(investment_id: str, current_user: TokenData = Depends(get_current_user)):
     """Delete investment"""
     try:
-        success = await investment_service.delete_investment(investment_id, current_user.id)
+        success = await investment_service.delete_investment(investment_id, current_user.user_id)
         if not success:
             raise HTTPException(status_code=404, detail="Investment not found")
         return {"message": "Investment deleted successfully"}
@@ -383,7 +383,7 @@ async def delete_investment(investment_id: str, current_user: TokenData = Depend
 async def get_portfolio_stats(current_user: TokenData = Depends(get_current_user)):
     """Get portfolio statistics"""
     try:
-        stats = await investment_service.get_portfolio_stats(current_user.id)
+        stats = await investment_service.get_portfolio_stats(current_user.user_id)
         return stats
     except Exception as e:
         logger.error(f"Failed to get portfolio stats: {e}")
@@ -393,7 +393,7 @@ async def get_portfolio_stats(current_user: TokenData = Depends(get_current_user
 async def get_portfolio_analytics(current_user: TokenData = Depends(get_current_user)):
     """Get portfolio analytics"""
     try:
-        analytics = await investment_service.get_portfolio_analytics(current_user.id)
+        analytics = await investment_service.get_portfolio_analytics(current_user.user_id)
         return analytics
     except Exception as e:
         logger.error(f"Failed to get portfolio analytics: {e}")
@@ -408,7 +408,7 @@ async def get_dashboard_analytics(
 ):
     """Get comprehensive dashboard analytics"""
     try:
-        analytics = await analytics_service.get_dashboard_analytics(current_user.id)
+        analytics = await analytics_service.get_dashboard_analytics(current_user.user_id)
         return analytics
     except Exception as e:
         logger.error(f"Failed to get dashboard analytics: {e}")
@@ -423,7 +423,7 @@ async def get_funding_trends(
 ):
     """Get funding trend data"""
     try:
-        trends = await analytics_service.get_funding_trends(current_user.id, days)
+        trends = await analytics_service.get_funding_trends(current_user.user_id, days)
         return {"trends": trends}
     except Exception as e:
         logger.error(f"Failed to get funding trends: {e}")
@@ -437,7 +437,7 @@ async def get_roi_predictions(
 ):
     """Get ROI predictions"""
     try:
-        predictions = await analytics_service.get_roi_predictions(current_user.id)
+        predictions = await analytics_service.get_roi_predictions(current_user.user_id)
         return predictions
     except Exception as e:
         logger.error(f"Failed to get ROI predictions: {e}")
@@ -451,7 +451,7 @@ async def get_risk_analytics(
 ):
     """Get risk analytics"""
     try:
-        risk_analytics = await analytics_service.get_risk_analytics(current_user.id)
+        risk_analytics = await analytics_service.get_risk_analytics(current_user.user_id)
         return risk_analytics
     except Exception as e:
         logger.error(f"Failed to get risk analytics: {e}")
@@ -465,7 +465,7 @@ async def get_market_insights(
 ):
     """Get market insights"""
     try:
-        insights = await analytics_service.get_market_insights(current_user.id)
+        insights = await analytics_service.get_market_insights(current_user.user_id)
         return insights
     except Exception as e:
         logger.error(f"Failed to get market insights: {e}")
@@ -481,7 +481,7 @@ async def get_alerts(
 ):
     """Get smart alerts"""
     try:
-        alerts = await alert_service.generate_smart_alerts(current_user.id, limit)
+        alerts = await alert_service.generate_smart_alerts(current_user.user_id, limit)
         return {
             "alerts": alerts,
             "summary": {
@@ -500,7 +500,7 @@ async def get_alerts(
 async def get_alert_preferences(current_user: TokenData = Depends(get_current_user)):
     """Get user alert preferences"""
     try:
-        preferences = await alert_service.get_user_alert_preferences(current_user.id)
+        preferences = await alert_service.get_user_alert_preferences(current_user.user_id)
         return preferences
     except Exception as e:
         logger.error(f"Failed to get alert preferences: {e}")
@@ -513,7 +513,7 @@ async def update_alert_preferences(
 ):
     """Update user alert preferences"""
     try:
-        updated_preferences = await alert_service.update_user_alert_preferences(current_user.id, preferences)
+        updated_preferences = await alert_service.update_user_alert_preferences(current_user.user_id, preferences)
         return updated_preferences
     except Exception as e:
         logger.error(f"Failed to update alert preferences: {e}")
@@ -529,7 +529,7 @@ async def get_recommendations(
 ):
     """Get AI-powered investment recommendations"""
     try:
-        recommendations = await project_service.get_recommendations(limit, current_user.id)
+        recommendations = await project_service.get_recommendations(limit, current_user.user_id)
         return {
             "recommendations": recommendations,
             "generated_at": datetime.utcnow().isoformat(),
