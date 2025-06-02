@@ -55,6 +55,9 @@ from services.auth import get_current_user, jwt_service
 # Routes
 from routes.auth import auth_router
 
+# Security Middleware
+from middleware.security_validation import SecurityValidationMiddleware
+
 # Setup logging
 logging.basicConfig(
     level=getattr(logging, logging_config.LEVEL),
