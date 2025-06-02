@@ -105,7 +105,7 @@ const InvestmentsTab = () => {
         <div className="mt-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-lg font-medium text-blue-800">
-              Total Invested: ${totalInvestment.toLocaleString()}
+              Total Invested: ${totalInvestment.toString()}
             </p>
           </div>
         </div>
