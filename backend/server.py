@@ -7,8 +7,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 import motor.motor_asyncio
-import aioredis
-import openai
+import redis.asyncio as redis
 from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
@@ -120,7 +119,7 @@ async def get_redis_client():
     global redis_client
     if redis_client is None:
         try:
-            redis_client = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+            redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
             # Test connection
             await redis_client.ping()
             logger.info("✅ Redis connection established successfully")
