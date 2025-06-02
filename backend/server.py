@@ -3,6 +3,10 @@
 Enterprise-grade FastAPI application with clean architecture
 """
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import logging
 import asyncio
 from datetime import datetime
@@ -17,39 +21,39 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 # Configuration and Core
-from .config.settings import (
+from config.settings import (
     app_config, server_config, db_config, redis_config, 
     openai_config, auth_config, rate_limit_config, logging_config, validate_config
 )
 
 # Database and Cache
-from .database.connection import db_manager, get_database, get_client
-from .services.cache_service import cache_service
+from database.connection import db_manager, get_database, get_client
+from services.cache_service import cache_service
 
 # Models
-from .models.projects import (
+from models.projects import (
     KickstarterProject, ProjectCreate, ProjectUpdate, ProjectResponse, 
     ProjectFilters, ProjectStats, BatchAnalyzeRequest
 )
-from .models.investments import (
+from models.investments import (
     Investment, InvestmentCreate, InvestmentUpdate, InvestmentResponse,
     InvestmentFilters, PortfolioStats, PortfolioAnalytics
 )
-from .models.auth import (
+from models.auth import (
     User, UserCreate, UserLogin, UserResponse, UserUpdate,
     TokenResponse, RefreshTokenRequest, PasswordResetRequest
 )
 
 # Services
-from .services.ai_service import ai_service
-from .services.project_service import ProjectService
-from .services.investment_service import InvestmentService
-from .services.alert_service import AlertService
-from .services.analytics_service import initialize_analytics_service
-from .services.auth import get_current_user, verify_token, create_access_token
+from services.ai_service import ai_service
+from services.project_service import ProjectService
+from services.investment_service import InvestmentService
+from services.alert_service import AlertService
+from services.analytics_service import initialize_analytics_service
+from services.auth import get_current_user, verify_token, create_access_token
 
 # Routes
-from .routes.auth import auth_router
+from routes.auth import auth_router
 
 # Setup logging
 logging.basicConfig(
