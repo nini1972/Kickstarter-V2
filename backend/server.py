@@ -290,7 +290,7 @@ async def batch_analyze_projects(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Investment Management Endpoints
-@app.post("/api/investments", response_model=InvestmentResponse)
+@app.post("/api/investments", response_model=Investment)
 @limiter.limit(rate_limit_config.API_LIMIT)
 async def create_investment(
     request: Request,
@@ -300,11 +300,7 @@ async def create_investment(
     """Create a new investment"""
     try:
         investment = await investment_service.create_investment(investment_data, current_user.id)
-        return InvestmentResponse(
-            success=True,
-            message="Investment created successfully",
-            data=investment
-        )
+        return investment
     except Exception as e:
         logger.error(f"Failed to create investment: {e}")
         raise HTTPException(status_code=500, detail=str(e))
