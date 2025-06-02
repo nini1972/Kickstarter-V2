@@ -339,6 +339,15 @@ class AIAnalysisService:
             logger.warning(f"Failed to parse AI response for {project_name}: {e}")
             return self._get_fallback_analysis()
     
+    def get_circuit_breaker_stats(self) -> Dict[str, Any]:
+        """Get circuit breaker statistics for monitoring"""
+        return self.circuit_breaker.get_stats()
+    
+    async def reset_circuit_breaker(self):
+        """Manually reset circuit breaker - for admin use"""
+        await self.circuit_breaker.reset()
+        logger.info("🔄 AI service circuit breaker manually reset")
+    
     def _get_fallback_analysis(self) -> Dict[str, Any]:
         """Provide fallback analysis when AI fails"""
         return {
@@ -354,7 +363,8 @@ class AIAnalysisService:
             "competitive_advantage": "Analysis pending",
             "error": "AI analysis failed",
             "analyzed_at": datetime.utcnow().isoformat(),
-            "is_fallback": True
+            "is_fallback": True,
+            "circuit_breaker_state": self.circuit_breaker.get_state().value if hasattr(self, 'circuit_breaker') else "unknown"
         }
     
     async def get_recommendations(self, projects: List[KickstarterProject], limit: int = 10) -> List[Dict[str, Any]]:
