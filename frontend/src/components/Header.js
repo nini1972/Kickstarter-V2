@@ -13,7 +13,12 @@ const Header = ({ onAddProject, onAddInvestment, onShowAlertSettings }) => {
         <div className="flex justify-between items-center py-6">
           <div className="flex items-center">
             <ArrowTrendingUpIcon className="h-8 w-8 text-indigo-600 mr-3" />
-            <h1 className="text-2xl font-bold text-gray-900">Kickstarter Investment Tracker</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Kickstarter Investment Tracker</h1>
+              {user && (
+                <p className="text-sm text-gray-500">Welcome, {user.username || user.email}</p>
+              )}
+            </div>
             {alerts.length > 0 && (
               <div className="ml-4 flex items-center">
                 <BellIcon className="h-6 w-6 text-red-500 animate-pulse" />
