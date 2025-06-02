@@ -574,6 +574,16 @@ async def health_check():
                 "error": str(e)
             }
         
+        # Redis cache check
+        try:
+            cache_stats = await get_cache_stats()
+            health_status["checks"]["redis_cache"] = cache_stats
+        except Exception as e:
+            health_status["checks"]["redis_cache"] = {
+                "status": "error",
+                "error": str(e)
+            }
+        
         # OpenAI API connectivity check (basic)
         try:
             # Simple check without making actual API call to avoid costs
