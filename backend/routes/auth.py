@@ -48,6 +48,7 @@ db = client.get_database()
 rate_limiter = RateLimitService()
 
 @auth_router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(rate_limit_config.REGISTRATION_LIMIT)
 async def register_user(user_data: UserCreate, request: Request):
     """Register a new user with comprehensive validation"""
     try:
