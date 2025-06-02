@@ -20,11 +20,32 @@ from services.circuit_breaker import (
 logger = logging.getLogger(__name__)
 
 class AIAnalysisService:
-    """AI-powered project analysis service with caching"""
+    """AI-powered project analysis service with circuit breaker protection"""
     
     def __init__(self, redis_client=None):
         self.redis_client = redis_client
         self.openai_client = None
+        
+        # Initialize circuit breaker for OpenAI API calls
+        self.circuit_config = CircuitBreakerConfig(
+            failure_threshold=3,          # Open after 3 failures
+            success_threshold=2,          # Close after 2 successes
+            timeout_duration=120,         # Wait 2 minutes before retry
+            call_timeout=45,              # 45s timeout per call
+            expected_exception=(Exception,)  # All exceptions count as failures
+        )
+        
+        self.circuit_breaker = CircuitBreaker("openai_api", self.circuit_config)
+        circuit_registry.register(self.circuit_breaker)
+        
+        # Exponential backoff for retries
+        self.backoff = ExponentialBackoff(
+            initial_delay=1.0,
+            max_delay=30.0,
+            multiplier=2.0,
+            jitter=True
+        )
+        
         self._initialize_client()
     
     def _initialize_client(self):
@@ -33,9 +54,9 @@ class AIAnalysisService:
             self.openai_client = AsyncOpenAI(
                 api_key=openai_config.API_KEY,
                 timeout=openai_config.TIMEOUT,
-                max_retries=openai_config.MAX_RETRIES
+                max_retries=0  # We handle retries with circuit breaker
             )
-            logger.info("✅ AI service initialized successfully")
+            logger.info("✅ AI service initialized successfully with circuit breaker protection")
         except Exception as e:
             logger.error(f"❌ Failed to initialize AI service: {e}")
             self.openai_client = None
