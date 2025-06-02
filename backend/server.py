@@ -45,7 +45,7 @@ cache_ttl = int(os.environ.get('CACHE_TTL', '3600'))  # 1 hour default
 redis_client = None
 
 # OpenAI client setup
-openai.api_key = os.environ.get('OPENAI_API_KEY')
+openai_client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 # Rate limiter setup
 limiter = Limiter(key_func=get_remote_address)
