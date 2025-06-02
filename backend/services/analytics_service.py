@@ -11,6 +11,7 @@ import asyncio
 from models.projects import KickstarterProject
 from models.investments import Investment
 from services.cache_service import cache_service
+from services.db_optimization import db_optimization_service
 
 logger = logging.getLogger(__name__)
 
