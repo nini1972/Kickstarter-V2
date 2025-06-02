@@ -42,7 +42,7 @@ class TestProjectModels:
     
     def test_project_create_invalid_funding_goal(self, sample_project_data):
         """Test validation fails with negative funding goal"""
-        sample_project_data["funding_goal"] = -1000
+        sample_project_data["goal_amount"] = -1000
         
         with pytest.raises(ValidationError) as exc_info:
             ProjectCreate(**sample_project_data)
@@ -51,7 +51,7 @@ class TestProjectModels:
     
     def test_project_create_invalid_current_funding(self, sample_project_data):
         """Test validation fails with negative current funding"""
-        sample_project_data["current_funding"] = -500
+        sample_project_data["pledged_amount"] = -500
         
         with pytest.raises(ValidationError) as exc_info:
             ProjectCreate(**sample_project_data)
