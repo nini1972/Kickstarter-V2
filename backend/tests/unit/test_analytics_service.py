@@ -3,6 +3,7 @@
 Testing the enterprise-grade analytics service with comprehensive algorithms
 """
 
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
