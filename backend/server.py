@@ -42,8 +42,7 @@ cache_ttl = int(os.environ.get('CACHE_TTL', '3600'))  # 1 hour default
 redis_client = None
 
 # OpenAI client
-openai.api_key = os.environ['OPENAI_API_KEY']
-openai_client = openai.OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+openai_client = AsyncOpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 # Create the main app without a prefix
 app = FastAPI(title="Kickstarter Investment Tracker", version="1.0.0")
