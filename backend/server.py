@@ -804,7 +804,7 @@ async def get_ai_recommendations():
         {[f"- {p['name']} ({p['category']}, Risk: {p['risk_level']})" for p in projects[:5]]}
         """
         
-        response = openai_client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4-turbo-preview",
             messages=[{
                 "role": "user", 
