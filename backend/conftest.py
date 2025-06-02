@@ -272,13 +272,13 @@ class TestDataFactory:
     def create_project(overrides: Dict[str, Any] = None) -> Dict[str, Any]:
         """Create a test project"""
         project = {
-            "title": fake.sentence(nb_words=4)[:-1],
+            "name": fake.sentence(nb_words=4)[:-1],
+            "creator": fake.name(),
             "description": fake.text(max_nb_chars=500),
             "category": fake.random_element(elements=("Technology", "Games", "Art")),
-            "funding_goal": fake.random_int(min=1000, max=100000),
-            "current_funding": fake.random_int(min=0, max=50000),
+            "goal_amount": fake.random_int(min=1000, max=100000),
+            "pledged_amount": fake.random_int(min=0, max=50000),
             "deadline": fake.future_datetime(end_date="+30d").isoformat(),
-            "creator_name": fake.name(),
             "project_url": fake.url(),
             "risk_level": fake.random_element(elements=("low", "medium", "high"))
         }
