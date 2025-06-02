@@ -114,6 +114,113 @@ class Investment(BaseModel):
     reward_tier: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Caching utilities
+async def get_redis_client():
+    """Get Redis client singleton"""
+    global redis_client
+    if redis_client is None:
+        try:
+            redis_client = aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+            # Test connection
+            await redis_client.ping()
+            logger.info("✅ Redis connection established successfully")
+        except Exception as e:
+            logger.error(f"❌ Redis connection failed: {e}")
+            redis_client = None
+    return redis_client
+
+def generate_cache_key(prefix: str, project: KickstarterProject) -> str:
+    """Generate a consistent cache key for project analysis"""
+    # Create hash from project content that affects AI analysis
+    content = f"{project.name}_{project.description}_{project.category}_{project.goal_amount}_{project.current_amount}"
+    content_hash = hashlib.md5(content.encode()).hexdigest()[:12]
+    return f"{prefix}:ai_analysis:{project.id}:{content_hash}"
+
+async def get_cached_analysis(project: KickstarterProject) -> Optional[Dict[str, Any]]:
+    """Retrieve cached AI analysis result"""
+    try:
+        redis = await get_redis_client()
+        if redis is None:
+            return None
+        
+        cache_key = generate_cache_key("kickstarter", project)
+        cached_result = await redis.get(cache_key)
+        
+        if cached_result:
+            logger.info(f"✅ Cache HIT for project {project.id}")
+            return json.loads(cached_result)
+        else:
+            logger.info(f"❌ Cache MISS for project {project.id}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Cache retrieval error: {e}")
+        return None
+
+async def cache_analysis_result(project: KickstarterProject, analysis: Dict[str, Any]) -> None:
+    """Cache AI analysis result with TTL"""
+    try:
+        redis = await get_redis_client()
+        if redis is None:
+            return
+        
+        cache_key = generate_cache_key("kickstarter", project)
+        
+        # Add metadata to cached result
+        cache_data = {
+            "analysis": analysis,
+            "cached_at": datetime.utcnow().isoformat(),
+            "project_id": project.id,
+            "cache_version": "1.0"
+        }
+        
+        await redis.setex(cache_key, cache_ttl, json.dumps(cache_data))
+        logger.info(f"✅ Cached analysis for project {project.id} (TTL: {cache_ttl}s)")
+        
+    except Exception as e:
+        logger.error(f"❌ Cache storage error: {e}")
+
+async def invalidate_project_cache(project_id: str) -> None:
+    """Invalidate all cached data for a specific project"""
+    try:
+        redis = await get_redis_client()
+        if redis is None:
+            return
+        
+        # Find and delete all cache keys for this project
+        pattern = f"kickstarter:ai_analysis:{project_id}:*"
+        keys = await redis.keys(pattern)
+        
+        if keys:
+            await redis.delete(*keys)
+            logger.info(f"✅ Invalidated {len(keys)} cache entries for project {project_id}")
+        
+    except Exception as e:
+        logger.error(f"❌ Cache invalidation error: {e}")
+
+async def get_cache_stats() -> Dict[str, Any]:
+    """Get Redis cache statistics"""
+    try:
+        redis = await get_redis_client()
+        if redis is None:
+            return {"status": "disconnected"}
+        
+        info = await redis.info()
+        keys_count = await redis.dbsize()
+        
+        return {
+            "status": "connected",
+            "total_keys": keys_count,
+            "memory_used": info.get("used_memory_human", "N/A"),
+            "connected_clients": info.get("connected_clients", 0),
+            "hits": info.get("keyspace_hits", 0),
+            "misses": info.get("keyspace_misses", 0)
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Cache stats error: {e}")
+        return {"status": "error", "error": str(e)}
+
 class ProjectCreate(BaseModel):
     name: str
     creator: str
