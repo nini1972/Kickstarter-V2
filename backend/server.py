@@ -107,6 +107,11 @@ async def lifespan(app: FastAPI):
         investment_service = InvestmentService(database)
         alert_service = AlertService(database)
         analytics_service = initialize_analytics_service(database)
+        logger.info("✅ Analytics service initialized")
+        
+        # Initialize database optimization service
+        db_optimization_service = initialize_db_optimization_service(database)
+        logger.info("✅ Database optimization service initialized")
         
         logger.info("✅ Business services initialized")
         logger.info("🎉 Application startup complete!")
