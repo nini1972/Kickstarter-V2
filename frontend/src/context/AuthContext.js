@@ -129,13 +129,10 @@ export const AuthProvider = ({ children }) => {
       role: 'user'
     };
     
-    // Create a JWT-like token for the demo user
-    const demoToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vLXVzZXItMSIsImVtYWlsIjoiZGVtb0BleGFtcGxlLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-    
-    setToken(demoToken);
+    // For demo mode, we still use the placeholder token approach
+    // In a real production app, demo mode would also use secure cookies
+    setToken('demo-cookie-based-auth');
     setUser(demoUser);
-    localStorage.setItem('auth_token', demoToken);
-    localStorage.setItem('auth_user', JSON.stringify(demoUser));
   };
 
   const value = {
