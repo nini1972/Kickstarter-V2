@@ -608,8 +608,9 @@ async def scrape_kickstarter_project(url: str) -> Dict[str, Any]:
         return {}
 
 # API Routes
+# Apply limiter to specific endpoints that need rate limiting
 @api_router.get("/health")
-@limiter.limit("30/minute")  # Allow 30 health checks per minute
+@limiter.limit("30/minute")
 async def health_check(request: Request):
     """Comprehensive health check endpoint for monitoring system performance"""
     try:
