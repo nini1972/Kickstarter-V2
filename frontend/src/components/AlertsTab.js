@@ -131,7 +131,7 @@ const AlertsTab = () => {
                       <p className="text-sm font-medium text-gray-900">{alert.title}</p>
                       <p className="mt-1 text-sm text-gray-500">{alert.message}</p>
                       <p className="mt-1 text-xs text-gray-400">
-                        {new Date(alert.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} {new Date(alert.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        {alert.created_at ? new Date(alert.created_at).toDateString() : 'No date'} {alert.created_at ? new Date(alert.created_at).toTimeString().slice(0, 5) : ''}
                       </p>
                     </div>
                   </div>
