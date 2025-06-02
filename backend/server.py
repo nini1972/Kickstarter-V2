@@ -52,6 +52,7 @@ from services.alert_service import AlertService
 from services.analytics_service import initialize_analytics_service
 from services.auth import get_current_user, jwt_service
 from services.circuit_breaker import circuit_registry
+from services.db_optimization import initialize_db_optimization_service, db_optimization_service
 
 # Routes
 from routes.auth import auth_router
