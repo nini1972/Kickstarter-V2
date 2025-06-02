@@ -27,7 +27,7 @@ class TestProjectModels:
     def test_project_create_valid_data(self, sample_project_data):
         """Test creating a project with valid data"""
         project = ProjectCreate(**sample_project_data)
-        assert project.title == sample_project_data["title"]
+        assert project.name == sample_project_data["name"]
         assert project.category == sample_project_data["category"]
         assert project.risk_level in ["low", "medium", "high"]
     
