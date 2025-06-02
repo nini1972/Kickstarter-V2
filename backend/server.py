@@ -897,7 +897,8 @@ async def root():
     return {"message": "Kickstarter Investment Tracker API"}
 
 @api_router.post("/projects", response_model=KickstarterProject)
-async def create_project(project_data: ProjectCreate):
+@limiter.limit("20/minute")  # Allow 20 project creations per minute
+async def create_project(request: Request, project_data: ProjectCreate):
     project = KickstarterProject(**project_data.model_dump())
     
     # Perform AI analysis
