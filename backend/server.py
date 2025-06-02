@@ -214,6 +214,72 @@ async def health_check(request: Request):
             }
         )
 
+# Circuit Breaker Monitoring Endpoints
+@app.get("/api/circuit-breakers")
+async def get_circuit_breaker_stats(current_user: TokenData = Depends(get_current_user)):
+    """Get comprehensive circuit breaker statistics"""
+    try:
+        stats = circuit_registry.get_all_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get circuit breaker stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/circuit-breakers/{breaker_name}")
+async def get_specific_circuit_breaker(breaker_name: str, current_user: TokenData = Depends(get_current_user)):
+    """Get detailed statistics for a specific circuit breaker"""
+    try:
+        breaker = circuit_registry.get_breaker(breaker_name)
+        if not breaker:
+            raise HTTPException(status_code=404, detail=f"Circuit breaker '{breaker_name}' not found")
+        
+        return breaker.get_stats()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get circuit breaker {breaker_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/circuit-breakers/{breaker_name}/reset")
+async def reset_circuit_breaker(breaker_name: str, current_user: TokenData = Depends(get_current_user)):
+    """Manually reset a specific circuit breaker"""
+    try:
+        breaker = circuit_registry.get_breaker(breaker_name)
+        if not breaker:
+            raise HTTPException(status_code=404, detail=f"Circuit breaker '{breaker_name}' not found")
+        
+        await breaker.reset()
+        logger.info(f"🔄 Circuit breaker '{breaker_name}' reset by user {current_user.user_id}")
+        
+        return {
+            "message": f"Circuit breaker '{breaker_name}' reset successfully",
+            "new_state": breaker.get_state().value,
+            "reset_by": current_user.user_id,
+            "reset_at": datetime.utcnow().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to reset circuit breaker {breaker_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/circuit-breakers/reset-all")
+async def reset_all_circuit_breakers(current_user: TokenData = Depends(get_current_user)):
+    """Manually reset all circuit breakers"""
+    try:
+        await circuit_registry.reset_all()
+        logger.info(f"🔄 All circuit breakers reset by user {current_user.user_id}")
+        
+        return {
+            "message": "All circuit breakers reset successfully",
+            "total_reset": len(circuit_registry.breakers),
+            "reset_by": current_user.user_id,
+            "reset_at": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to reset all circuit breakers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Project Management Endpoints
 @app.post("/api/projects", response_model=KickstarterProject)
 @limiter.limit(rate_limit_config.API_LIMIT)
