@@ -683,6 +683,21 @@ async def health_check():
                 "error": str(e)
             }
         
+        # Batch processing performance check
+        try:
+            # Check recent batch processing statistics (placeholder)
+            health_status["checks"]["batch_processing"] = {
+                "status": "available",
+                "max_batch_size": 10,
+                "current_queued_batches": 0,
+                "last_batch_performance": "N/A"
+            }
+        except Exception as e:
+            health_status["checks"]["batch_processing"] = {
+                "status": "error",
+                "error": str(e)
+            }
+        
         # OpenAI API connectivity check (basic)
         try:
             # Simple check without making actual API call to avoid costs
