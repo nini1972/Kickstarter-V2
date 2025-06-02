@@ -10,6 +10,18 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
+// Request interceptor to add authentication token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
@@ -18,6 +30,11 @@ apiClient.interceptors.response.use(
       toast.error('Rate limit exceeded. Please try again later.');
     } else if (error.response?.status >= 500) {
       toast.error('Server error. Please try again later.');
+    } else if (error.response?.status === 401) {
+      // If unauthorized, clear the token and reload
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      window.location.reload();
     }
     return Promise.reject(error);
   }
