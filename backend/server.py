@@ -170,6 +170,31 @@ async def health_check(request: Request):
         cache_health = await cache_service.health_check()
         health_status["services"]["cache"] = cache_health
         
+        # Circuit breaker health
+        circuit_health = {
+            "status": "healthy",
+            "total_breakers": len(circuit_registry.breakers),
+            "open_breakers": sum(1 for cb in circuit_registry.breakers.values() if cb.get_state().value == "open"),
+            "breaker_details": {}
+        }
+        
+        # Check each circuit breaker status
+        for name, breaker in circuit_registry.breakers.items():
+            state = breaker.get_state().value
+            stats = breaker.get_stats()
+            
+            circuit_health["breaker_details"][name] = {
+                "state": state,
+                "success_rate": stats["stats"]["success_rate"],
+                "total_calls": stats["stats"]["total_calls"]
+            }
+            
+            # Mark as degraded if any breaker is open
+            if state == "open":
+                circuit_health["status"] = "degraded"
+        
+        health_status["services"]["circuit_breakers"] = circuit_health
+        
         # Overall status
         if db_health.get("status") != "healthy" or cache_health.get("status") != "healthy":
             health_status["status"] = "degraded"
