@@ -61,10 +61,12 @@ class KickstarterAPITester:
             "name": f"Test Project {uuid.uuid4()}",
             "description": "A test project created by automated testing",
             "category": "Technology",
-            "funding_goal": 50000,
-            "current_funding": 0,
-            "end_date": (datetime.now().isoformat().split("T")[0]),
-            "risk_level": "Medium",
+            "goal_amount": 50000,
+            "pledged_amount": 0,
+            "backers_count": 0,
+            "deadline": (datetime.now().isoformat()),
+            "launched_date": (datetime.now().isoformat()),
+            "status": "live",
             "creator": "Test Creator",
             "url": "https://example.com/test-project"
         }
