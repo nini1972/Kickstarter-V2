@@ -339,9 +339,15 @@
 
 ## test_plan:
   current_focus:
-    - "Database Indexing"
-    - "Health Check Endpoint"
-  stuck_tasks: []
+    - "React Query Integration"
+    - "Project Creation with AI Analysis"
+  stuck_tasks:
+    - "Project Creation with AI Analysis"
+    - "React Query Integration"
+    - "Advanced Filtering System"
+    - "Infinite Scrolling"
+    - "Optimistic Updates"
+    - "Enhanced UX Features"
   test_all: false
   test_priority: "high_first"
 
