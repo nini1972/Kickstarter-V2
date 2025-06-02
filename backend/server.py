@@ -51,6 +51,7 @@ from services.investment_service import InvestmentService
 from services.alert_service import AlertService
 from services.analytics_service import initialize_analytics_service
 from services.auth import get_current_user, jwt_service
+from services.circuit_breaker import circuit_registry
 
 # Routes
 from routes.auth import auth_router
