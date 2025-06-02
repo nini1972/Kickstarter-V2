@@ -109,8 +109,17 @@ class KickstarterAPITester:
             return False, None
         
         update_data = {
-            "current_funding": 25000,
-            "risk_level": "Low"
+            "name": f"Updated Project {uuid.uuid4()}",
+            "creator": "Test Creator",
+            "url": "https://example.com/test-project",
+            "description": "An updated test project",
+            "category": "Technology",
+            "goal_amount": 50000,
+            "pledged_amount": 25000,
+            "backers_count": 50,
+            "deadline": (datetime.now().isoformat()),
+            "launched_date": (datetime.now().isoformat()),
+            "status": "live"
         }
         
         return self.run_test(
