@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import openai
+from openai import AsyncOpenAI
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 import motor.motor_asyncio
