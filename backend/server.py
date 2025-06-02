@@ -561,11 +561,15 @@ async def root():
         "status": "operational",
         "features": [
             "JWT Authentication with RBAC",
+            "🔐 Enhanced Security Validation Middleware",
+            "🚫 NoSQL Injection Protection",  
+            "🛡️ XSS Prevention with HTML Sanitization",
+            "🔒 httpOnly Cookie-based Authentication",
+            "⚡ Enhanced Rate Limiting",
             "AI-powered Project Analysis",
             "Advanced Portfolio Analytics",
             "Smart Alert System",
             "Redis Caching",
-            "Rate Limiting",
             "Comprehensive Health Monitoring"
         ]
     }
