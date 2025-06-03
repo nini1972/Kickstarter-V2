@@ -1,0 +1,165 @@
+# 🚨 Prometheus Alert Rules
+# Production alerts for Kickstarter Investment Tracker
+
+groups:
+  - name: kickstarter.rules
+    rules:
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% for more than 5 minutes"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% for more than 5 minutes"
+
+      # Disk Space Alert
+      - alert: LowDiskSpace
+        expr: disk_usage_percent > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value }}% - immediate action required"
+
+      # API Response Time Alert
+      - alert: SlowAPIResponse
+        expr: api_request_duration_seconds > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow API response times"
+          description: "API response time is {{ $value }}s - performance degraded"
+
+      # Database Connection Alert
+      - alert: DatabaseConnectionDown
+        expr: database_health_status != 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failed"
+          description: "Database health check is failing"
+
+      # Redis Connection Alert
+      - alert: RedisConnectionDown
+        expr: redis_health_status != 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis connection failed"
+          description: "Redis cache is not responding"
+
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: rate(api_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value }} errors/second"
+
+      # Authentication Failures Alert
+      - alert: HighAuthFailures
+        expr: rate(auth_failures_total[5m]) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value }} failures/second"
+
+      # Circuit Breaker Open Alert
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker for {{ $labels.service }} is open"
+
+      # Too Many Active Connections
+      - alert: HighActiveConnections
+        expr: active_connections > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of active connections"
+          description: "Active connections: {{ $value }} - may indicate traffic spike or connection leak"
+
+  - name: business.rules
+    rules:
+      # Business Metrics Alerts
+      - alert: LowUserActivity
+        expr: rate(user_actions_total[1h]) < 10
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low user activity detected"
+          description: "User activity rate is {{ $value }} actions/hour"
+
+      - alert: HighInvestmentVolume
+        expr: investment_volume_hourly > 100000
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "High investment volume"
+          description: "Investment volume is ${{ $value }} in the last hour"
+
+      - alert: APIRateLimitHit
+        expr: rate_limit_exceeded_total > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API rate limits being exceeded"
+          description: "Rate limit exceeded {{ $value }} times in the last minute"
+
+  - name: security.rules
+    rules:
+      # Security Alerts
+      - alert: SecurityViolationSpike
+        expr: rate(security_violations_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Security violation spike detected"
+          description: "Security violations: {{ $value }} violations/second"
+
+      - alert: SuspiciousLoginActivity
+        expr: rate(suspicious_login_attempts_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Suspicious login activity"
+          description: "Suspicious login attempts: {{ $value }} attempts/second"
+
+      - alert: IPBlocked
+        expr: increase(blocked_ips_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+        annotations:
+          summary: "IP address blocked"
+          description: "{{ $value }} IP addresses blocked in the last 5 minutes"
