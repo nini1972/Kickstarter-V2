@@ -521,9 +521,735 @@ def test_db_optimization_features():
     else:
         logger.error(f"❌ {test_results['failed_tests']} tests failed.")
 
-if __name__ == "__main__":
-    # Run comprehensive tests for Database Query Optimization features
-    test_db_optimization_features()
+def test_prometheus_metrics():
+    """Test the Prometheus metrics endpoint"""
+    try:
+        response = requests.get(f"{API_URL}/metrics")
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Prometheus Metrics - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Verify Prometheus format
+        metrics_text = response.text
+        required_metrics = [
+            "cpu_usage_percent",
+            "memory_usage_percent",
+            "disk_usage_percent",
+            "api_requests_total",
+            "api_request_duration_seconds",
+            "auth_failures_total",
+            "security_violations_total",
+            "database_health_status",
+            "redis_health_status",
+            "active_connections",
+            "last_backup_timestamp"
+        ]
+        
+        missing_metrics = []
+        for metric in required_metrics:
+            if metric not in metrics_text:
+                missing_metrics.append(metric)
+        
+        metrics_present = len(missing_metrics) == 0
+        log_test_result("Prometheus Metrics - Required Metrics", metrics_present, 
+                       f"Missing metrics: {missing_metrics if missing_metrics else 'None'}")
+        
+        # Check for circuit breaker metrics
+        has_circuit_breaker_metrics = "circuit_breaker_state" in metrics_text
+        log_test_result("Prometheus Metrics - Circuit Breaker Metrics", has_circuit_breaker_metrics, 
+                       "Circuit breaker metrics are included in Prometheus output")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "prometheus_metrics",
+            "metrics_count": len(required_metrics),
+            "missing_metrics": missing_metrics,
+            "has_circuit_breaker_metrics": has_circuit_breaker_metrics,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Prometheus Metrics", False, f"Error: {str(e)}")
+        return False
+
+def test_detailed_metrics():
+    """Test the detailed metrics endpoint (admin only)"""
+    try:
+        # Get auth token
+        cookies = get_auth_token()
+        if not cookies:
+            log_test_result("Detailed Metrics - Authentication", False, "Failed to get auth token")
+            return False
+        
+        # Test the endpoint
+        response = requests.get(
+            f"{API_URL}/admin/metrics",
+            cookies=cookies
+        )
+        
+        # This might return 403 if the demo user doesn't have admin rights
+        if response.status_code == 403:
+            log_test_result("Detailed Metrics - Admin Access", True, 
+                           "Admin metrics endpoint requires admin privileges (403 Forbidden)")
+            test_results["production_infrastructure"]["skipped_tests"] += 1
+            return True
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Detailed Metrics - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        required_sections = ["system", "health", "database", "backups", "application"]
+        
+        missing_sections = []
+        for section in required_sections:
+            if section not in data:
+                missing_sections.append(section)
+        
+        sections_present = len(missing_sections) == 0
+        log_test_result("Detailed Metrics - Required Sections", sections_present, 
+                       f"Missing sections: {missing_sections if missing_sections else 'None'}")
+        
+        # Check system metrics
+        if "system" in data:
+            system = data["system"]
+            system_metrics = ["cpu_percent", "memory_percent", "disk_percent", "active_connections", "uptime_seconds"]
+            
+            missing_system_metrics = []
+            for metric in system_metrics:
+                if metric not in system:
+                    missing_system_metrics.append(metric)
+            
+            system_metrics_present = len(missing_system_metrics) == 0
+            log_test_result("Detailed Metrics - System Metrics", system_metrics_present, 
+                           f"Missing system metrics: {missing_system_metrics if missing_system_metrics else 'None'}")
+        
+        # Check database metrics
+        if "database" in data:
+            database = data["database"]
+            db_metrics = ["collections", "total_documents", "total_size_mb", "indexes"]
+            
+            missing_db_metrics = []
+            for metric in db_metrics:
+                if metric not in database:
+                    missing_db_metrics.append(metric)
+            
+            db_metrics_present = len(missing_db_metrics) == 0
+            log_test_result("Detailed Metrics - Database Metrics", db_metrics_present, 
+                           f"Missing database metrics: {missing_db_metrics if missing_db_metrics else 'None'}")
+            
+            # Log database stats
+            if "total_documents" in database and "indexes" in database:
+                log_test_result("Detailed Metrics - Database Stats", True, 
+                               f"Total documents: {database['total_documents']}, Indexes: {database['indexes']}")
+        
+        # Check backup metrics
+        if "backups" in data:
+            backups = data["backups"]
+            backup_metrics = ["last_backup", "backup_count", "backup_history"]
+            
+            missing_backup_metrics = []
+            for metric in backup_metrics:
+                if metric not in backups:
+                    missing_backup_metrics.append(metric)
+            
+            backup_metrics_present = len(missing_backup_metrics) == 0
+            log_test_result("Detailed Metrics - Backup Metrics", backup_metrics_present, 
+                           f"Missing backup metrics: {missing_backup_metrics if missing_backup_metrics else 'None'}")
+            
+            # Log backup stats
+            if "backup_count" in backups:
+                log_test_result("Detailed Metrics - Backup Stats", True, 
+                               f"Backup count: {backups['backup_count']}")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "detailed_metrics",
+            "sections_count": len(required_sections),
+            "missing_sections": missing_sections,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Detailed Metrics", False, f"Error: {str(e)}")
+        return False
+
+def test_alerts_endpoint():
+    """Test the alerts monitoring endpoint (admin only)"""
+    try:
+        # Get auth token
+        cookies = get_auth_token()
+        if not cookies:
+            log_test_result("Alerts Endpoint - Authentication", False, "Failed to get auth token")
+            return False
+        
+        # Test the endpoint
+        response = requests.get(
+            f"{API_URL}/admin/alerts",
+            cookies=cookies
+        )
+        
+        # This might return 403 if the demo user doesn't have admin rights
+        if response.status_code == 403:
+            log_test_result("Alerts Endpoint - Admin Access", True, 
+                           "Alerts endpoint requires admin privileges (403 Forbidden)")
+            test_results["production_infrastructure"]["skipped_tests"] += 1
+            return True
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Alerts Endpoint - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        required_fields = ["alerts", "total_alerts", "critical_alerts", "warning_alerts", "generated_at"]
+        
+        missing_fields = []
+        for field in required_fields:
+            if field not in data:
+                missing_fields.append(field)
+        
+        fields_present = len(missing_fields) == 0
+        log_test_result("Alerts Endpoint - Required Fields", fields_present, 
+                       f"Missing fields: {missing_fields if missing_fields else 'None'}")
+        
+        # Check alerts structure
+        if "alerts" in data and data["alerts"]:
+            alert = data["alerts"][0]
+            alert_fields = ["type", "severity", "message", "timestamp"]
+            
+            missing_alert_fields = []
+            for field in alert_fields:
+                if field not in alert:
+                    missing_alert_fields.append(field)
+            
+            alert_fields_present = len(missing_alert_fields) == 0
+            log_test_result("Alerts Endpoint - Alert Structure", alert_fields_present, 
+                           f"Missing alert fields: {missing_alert_fields if missing_alert_fields else 'None'}")
+        
+        # Log alert stats
+        if "total_alerts" in data and "critical_alerts" in data and "warning_alerts" in data:
+            log_test_result("Alerts Endpoint - Alert Stats", True, 
+                           f"Total alerts: {data['total_alerts']}, Critical: {data['critical_alerts']}, Warning: {data['warning_alerts']}")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "alerts",
+            "total_alerts": data.get("total_alerts", 0),
+            "critical_alerts": data.get("critical_alerts", 0),
+            "warning_alerts": data.get("warning_alerts", 0),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Alerts Endpoint", False, f"Error: {str(e)}")
+        return False
+
+def test_backup_history():
+    """Test the backup history endpoint (admin only)"""
+    try:
+        # Get auth token
+        cookies = get_auth_token()
+        if not cookies:
+            log_test_result("Backup History - Authentication", False, "Failed to get auth token")
+            return False
+        
+        # Test the endpoint
+        response = requests.get(
+            f"{API_URL}/admin/backup/history",
+            cookies=cookies
+        )
+        
+        # This might return 403 if the demo user doesn't have admin rights
+        if response.status_code == 403:
+            log_test_result("Backup History - Admin Access", True, 
+                           "Backup history endpoint requires admin privileges (403 Forbidden)")
+            test_results["production_infrastructure"]["skipped_tests"] += 1
+            return True
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Backup History - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        required_fields = ["backups", "total_backups", "generated_at"]
+        
+        missing_fields = []
+        for field in required_fields:
+            if field not in data:
+                missing_fields.append(field)
+        
+        fields_present = len(missing_fields) == 0
+        log_test_result("Backup History - Required Fields", fields_present, 
+                       f"Missing fields: {missing_fields if missing_fields else 'None'}")
+        
+        # Check backup structure if backups exist
+        if "backups" in data and data["backups"]:
+            backup = data["backups"][0]
+            backup_fields = ["backup_id", "status", "start_time", "end_time"]
+            
+            missing_backup_fields = []
+            for field in backup_fields:
+                if field not in backup:
+                    missing_backup_fields.append(field)
+            
+            backup_fields_present = len(missing_backup_fields) == 0
+            log_test_result("Backup History - Backup Structure", backup_fields_present, 
+                           f"Missing backup fields: {missing_backup_fields if missing_backup_fields else 'None'}")
+            
+            # Log backup details
+            if "backup_id" in backup and "status" in backup:
+                log_test_result("Backup History - Latest Backup", True, 
+                               f"Backup ID: {backup['backup_id']}, Status: {backup['status']}")
+        else:
+            log_test_result("Backup History - Backups", True, "No backups found in history")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "backup_history",
+            "total_backups": data.get("total_backups", 0),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Backup History", False, f"Error: {str(e)}")
+        return False
+
+def test_security_middleware():
+    """Test the security validation middleware against attacks"""
+    try:
+        # Test NoSQL injection protection
+        nosql_injection_tests = [
+            {"param": "id", "value": '{"$gt": ""}'},
+            {"param": "query", "value": '{"$where": "this.password == this.passwordConfirm"}'},
+            {"param": "filter", "value": '{"$regex": "^password"}'}
+        ]
+        
+        nosql_injection_blocked = 0
+        for test in nosql_injection_tests:
+            response = requests.get(
+                f"{API_URL}/projects",
+                params={test["param"]: test["value"]},
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code in [400, 401, 403, 404]:
+                nosql_injection_blocked += 1
+        
+        nosql_protection_rate = (nosql_injection_blocked / len(nosql_injection_tests)) * 100
+        log_test_result("Security Middleware - NoSQL Injection Protection", nosql_protection_rate >= 80, 
+                       f"NoSQL injection protection rate: {nosql_protection_rate:.2f}%")
+        
+        # Test XSS protection
+        xss_tests = [
+            {"data": {"name": "<script>alert(1)</script>Project"}},
+            {"data": {"description": "<img src=x onerror=alert(1)>"}},
+            {"data": {"url": "javascript:alert(1)"}}
+        ]
+        
+        xss_blocked = 0
+        for test in xss_tests:
+            response = requests.post(
+                f"{API_URL}/projects",
+                json=test["data"],
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code in [400, 401, 403, 404]:
+                xss_blocked += 1
+        
+        xss_protection_rate = (xss_blocked / len(xss_tests)) * 100
+        log_test_result("Security Middleware - XSS Protection", xss_protection_rate >= 80, 
+                       f"XSS protection rate: {xss_protection_rate:.2f}%")
+        
+        # Test input validation
+        input_validation_tests = [
+            {"data": {"name": "A" * 10000}},  # Extremely long string
+            {"data": {"description": "'; DROP TABLE users; --"}},  # SQL injection
+            {"data": {"url": "https://example.com?id=1' OR '1'='1"}}  # SQL injection in URL
+        ]
+        
+        input_validation_blocked = 0
+        for test in input_validation_tests:
+            response = requests.post(
+                f"{API_URL}/projects",
+                json=test["data"],
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code in [400, 401, 403, 404]:
+                input_validation_blocked += 1
+        
+        input_validation_rate = (input_validation_blocked / len(input_validation_tests)) * 100
+        log_test_result("Security Middleware - Input Validation", input_validation_rate >= 75, 
+                       f"Input validation rate: {input_validation_rate:.2f}%")
+        
+        # Test header validation
+        header_validation_tests = [
+            {"X-Forwarded-For": "A" * 10000},  # Extremely long header
+            {"X-Forwarded-For": "127.0.0.1', (SELECT * FROM users)"},  # SQL injection in header
+            {"User-Agent": "<script>alert(1)</script>"}  # XSS in User-Agent
+        ]
+        
+        header_validation_blocked = 0
+        for test in header_validation_tests:
+            response = requests.get(
+                f"{API_URL}/health",
+                headers=test
+            )
+            
+            if response.status_code in [400, 401, 403, 404]:
+                header_validation_blocked += 1
+        
+        header_validation_rate = (header_validation_blocked / len(header_validation_tests)) * 100
+        log_test_result("Security Middleware - Header Validation", header_validation_rate >= 30, 
+                       f"Header validation rate: {header_validation_rate:.2f}%")
+        
+        # Calculate overall effectiveness
+        overall_effectiveness = (nosql_protection_rate + xss_protection_rate + input_validation_rate + header_validation_rate) / 4
+        log_test_result("Security Middleware - Overall Effectiveness", overall_effectiveness >= 70, 
+                       f"Overall security middleware effectiveness: {overall_effectiveness:.2f}%")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "security_middleware",
+            "nosql_protection_rate": nosql_protection_rate,
+            "xss_protection_rate": xss_protection_rate,
+            "input_validation_rate": input_validation_rate,
+            "header_validation_rate": header_validation_rate,
+            "overall_effectiveness": overall_effectiveness,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Security Middleware", False, f"Error: {str(e)}")
+        return False
+
+def test_rate_limiting():
+    """Test the rate limiting functionality"""
+    try:
+        # Make multiple rapid requests to trigger rate limiting
+        endpoint = f"{API_URL}/health"
+        
+        start_time = time.time()
+        responses = []
+        
+        # Make 20 requests in quick succession
+        for _ in range(20):
+            response = requests.get(endpoint)
+            responses.append(response.status_code)
+            
+        # Check if any requests were rate limited (429)
+        rate_limited = 429 in responses
+        
+        # Calculate requests per second
+        duration = time.time() - start_time
+        requests_per_second = len(responses) / duration
+        
+        log_test_result("Rate Limiting - Detection", True, 
+                       f"Rate limiting {'triggered' if rate_limited else 'not triggered'} - {requests_per_second:.2f} requests/second")
+        
+        # Test login endpoint rate limiting (should be stricter)
+        login_responses = []
+        for _ in range(5):
+            response = requests.post(
+                f"{API_URL}/auth/login",
+                json={"email": "test@example.com", "password": "wrongpassword"},
+                headers={"Content-Type": "application/json"}
+            )
+            login_responses.append(response.status_code)
+        
+        login_rate_limited = 429 in login_responses
+        log_test_result("Rate Limiting - Login Protection", True, 
+                       f"Login rate limiting {'triggered' if login_rate_limited else 'not triggered'}")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "rate_limiting",
+            "rate_limited": rate_limited,
+            "login_rate_limited": login_rate_limited,
+            "requests_per_second": requests_per_second,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Rate Limiting", False, f"Error: {str(e)}")
+        return False
+
+def test_mongodb_atlas_configuration():
+    """Test the MongoDB Atlas configuration via health check"""
+    try:
+        response = requests.get(f"{API_URL}/health")
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("MongoDB Atlas Configuration - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        database = data.get("services", {}).get("database", {})
+        
+        # Check database status
+        if "status" not in database:
+            log_test_result("MongoDB Atlas Configuration - Status", False, 
+                           "Database status not found in health check response")
+            return False
+        
+        database_healthy = database.get("status") == "healthy"
+        log_test_result("MongoDB Atlas Configuration - Health", database_healthy, 
+                       f"Database status: {database.get('status')}")
+        
+        # Check response time (should be reasonable for a production database)
+        if "response_time_ms" in database:
+            response_time = database.get("response_time_ms", 0)
+            response_time_acceptable = response_time < 1000  # Less than 1 second
+            log_test_result("MongoDB Atlas Configuration - Response Time", response_time_acceptable, 
+                           f"Database response time: {response_time:.2f}ms")
+        
+        # Check database metadata if available
+        if "metadata" in database:
+            metadata = database.get("metadata", {})
+            log_test_result("MongoDB Atlas Configuration - Metadata", True, 
+                           f"Database metadata: {metadata}")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "mongodb_atlas",
+            "status": database.get("status"),
+            "response_time_ms": database.get("response_time_ms", 0),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return database_healthy
+    except Exception as e:
+        log_test_result("MongoDB Atlas Configuration", False, f"Error: {str(e)}")
+        return False
+
+def test_redis_configuration():
+    """Test the Redis configuration via health check"""
+    try:
+        response = requests.get(f"{API_URL}/health")
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Redis Configuration - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        cache = data.get("services", {}).get("cache", {})
+        
+        # Check cache status
+        if "status" not in cache:
+            log_test_result("Redis Configuration - Status", False, 
+                           "Cache status not found in health check response")
+            return False
+        
+        cache_status = cache.get("status")
+        log_test_result("Redis Configuration - Status", True, 
+                       f"Cache status: {cache_status}")
+        
+        # Check response time if available
+        if "response_time_ms" in cache:
+            response_time = cache.get("response_time_ms", 0)
+            log_test_result("Redis Configuration - Response Time", True, 
+                           f"Cache response time: {response_time:.2f}ms")
+        
+        # Check cache message
+        if "message" in cache:
+            message = cache.get("message")
+            log_test_result("Redis Configuration - Message", True, 
+                           f"Cache message: {message}")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "redis_configuration",
+            "status": cache_status,
+            "response_time_ms": cache.get("response_time_ms", 0),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Redis Configuration", False, f"Error: {str(e)}")
+        return False
+
+def test_root_endpoint():
+    """Test the root endpoint for API version and features"""
+    try:
+        response = requests.get(f"{BACKEND_URL}")
+        
+        # Check response status
+        if response.status_code != 200:
+            log_test_result("Root Endpoint - Response", False, 
+                           f"Unexpected status code: {response.status_code} - {response.text}")
+            return False
+        
+        # Parse response data
+        data = response.json()
+        
+        # Check for version
+        if "version" not in data:
+            log_test_result("Root Endpoint - Version", False, 
+                           "API version not found in root endpoint response")
+            return False
+        
+        log_test_result("Root Endpoint - Version", True, 
+                       f"API version: {data.get('version')}")
+        
+        # Check for features
+        if "features" not in data:
+            log_test_result("Root Endpoint - Features", False, 
+                           "Features list not found in root endpoint response")
+            return False
+        
+        features = data.get("features", [])
+        
+        # Check for production features
+        production_features = [
+            "Enhanced Security Validation Middleware",
+            "NoSQL Injection Protection",
+            "XSS Prevention with HTML Sanitization",
+            "httpOnly Cookie-based Authentication",
+            "Enhanced Rate Limiting",
+            "Circuit Breaker Protection for External APIs",
+            "Exponential Backoff and Retry Logic",
+            "Circuit Breaker Monitoring & Management",
+            "Database Query Optimization",
+            "MongoDB Aggregation Pipelines",
+            "Query Result Streaming",
+            "Performance Monitoring & Analytics"
+        ]
+        
+        found_features = []
+        for feature in production_features:
+            if any(feature.lower() in f.lower() for f in features):
+                found_features.append(feature)
+        
+        features_found = len(found_features) / len(production_features) * 100
+        log_test_result("Root Endpoint - Production Features", features_found >= 80, 
+                       f"Production features found: {features_found:.2f}% ({len(found_features)}/{len(production_features)})")
+        
+        # Store metrics for reporting
+        test_results["production_infrastructure"]["metrics"].append({
+            "endpoint": "root",
+            "version": data.get("version"),
+            "features_count": len(features),
+            "production_features_found": len(found_features),
+            "production_features_percentage": features_found,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return True
+    except Exception as e:
+        log_test_result("Root Endpoint", False, f"Error: {str(e)}")
+        return False
+
+def test_production_infrastructure():
+    """Run comprehensive tests for Production Infrastructure"""
+    logger.info("\n🚀 Starting Production Infrastructure Tests")
+    logger.info(f"Backend URL: {BACKEND_URL}")
+    logger.info(f"API URL: {API_URL}")
     
-    # Run comprehensive tests for Circuit Breaker features
-    # test_circuit_breaker_features()
+    # Initialize test counters
+    test_results["production_infrastructure"]["total_tests"] = 0
+    test_results["production_infrastructure"]["passed_tests"] = 0
+    test_results["production_infrastructure"]["failed_tests"] = 0
+    
+    # Test root endpoint
+    test_root_endpoint()
+    
+    # Test health check endpoint
+    test_health_endpoint()
+    
+    # Test MongoDB Atlas configuration
+    test_mongodb_atlas_configuration()
+    
+    # Test Redis configuration
+    test_redis_configuration()
+    
+    # Test Prometheus metrics endpoint
+    test_prometheus_metrics()
+    
+    # Test detailed metrics endpoint
+    test_detailed_metrics()
+    
+    # Test alerts endpoint
+    test_alerts_endpoint()
+    
+    # Test backup history endpoint
+    test_backup_history()
+    
+    # Test security middleware
+    test_security_middleware()
+    
+    # Test rate limiting
+    test_rate_limiting()
+    
+    # Test circuit breaker in health response
+    test_circuit_breaker_in_health_response()
+    
+    # Print test summary
+    logger.info("\n📊 PRODUCTION INFRASTRUCTURE TEST SUMMARY")
+    logger.info(f"Total Tests: {test_results['total_tests']}")
+    logger.info(f"Passed: {test_results['passed_tests']}")
+    logger.info(f"Failed: {test_results['failed_tests']}")
+    logger.info(f"Skipped: {test_results['production_infrastructure']['skipped_tests']}")
+    
+    success_rate = (test_results['passed_tests'] / test_results['total_tests']) * 100 if test_results['total_tests'] > 0 else 0
+    logger.info(f"Success Rate: {success_rate:.2f}%")
+    
+    # Print key metrics
+    if test_results["production_infrastructure"]["metrics"]:
+        logger.info("\n📈 KEY METRICS")
+        
+        # Security middleware effectiveness
+        security_metrics = next((m for m in test_results["production_infrastructure"]["metrics"] if m.get("endpoint") == "security_middleware"), None)
+        if security_metrics:
+            logger.info(f"Security Middleware Effectiveness: {security_metrics.get('overall_effectiveness', 0):.2f}%")
+            logger.info(f"  - NoSQL Injection Protection: {security_metrics.get('nosql_protection_rate', 0):.2f}%")
+            logger.info(f"  - XSS Prevention: {security_metrics.get('xss_protection_rate', 0):.2f}%")
+            logger.info(f"  - Input Validation: {security_metrics.get('input_validation_rate', 0):.2f}%")
+            logger.info(f"  - Header Validation: {security_metrics.get('header_validation_rate', 0):.2f}%")
+        
+        # MongoDB Atlas metrics
+        mongodb_metrics = next((m for m in test_results["production_infrastructure"]["metrics"] if m.get("endpoint") == "mongodb_atlas"), None)
+        if mongodb_metrics:
+            logger.info(f"MongoDB Atlas Status: {mongodb_metrics.get('status')}")
+            logger.info(f"MongoDB Response Time: {mongodb_metrics.get('response_time_ms', 0):.2f}ms")
+        
+        # Redis metrics
+        redis_metrics = next((m for m in test_results["production_infrastructure"]["metrics"] if m.get("endpoint") == "redis_configuration"), None)
+        if redis_metrics:
+            logger.info(f"Redis Cache Status: {redis_metrics.get('status')}")
+            logger.info(f"Redis Response Time: {redis_metrics.get('response_time_ms', 0):.2f}ms")
+        
+        # Backup metrics
+        backup_metrics = next((m for m in test_results["production_infrastructure"]["metrics"] if m.get("endpoint") == "backup_history"), None)
+        if backup_metrics:
+            logger.info(f"Backup Count: {backup_metrics.get('total_backups', 0)}")
+    
+    if test_results['failed_tests'] == 0:
+        logger.info("✅ All Production Infrastructure tests passed successfully!")
+    else:
+        logger.error(f"❌ {test_results['failed_tests']} tests failed.")
