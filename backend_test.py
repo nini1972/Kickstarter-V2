@@ -51,6 +51,12 @@ test_results = {
         "passed_tests": 0,
         "failed_tests": 0,
         "performance_metrics": []
+    },
+    "production_infrastructure": {
+        "total_tests": 0,
+        "passed_tests": 0,
+        "failed_tests": 0,
+        "metrics": []
     }
 }
 
