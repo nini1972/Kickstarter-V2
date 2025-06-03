@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend Test Script for Kickstarter Investment Tracker
-Tests the Database Query Optimization features and Circuit Breaker Protection
+Tests the Production Infrastructure Setup, Database Query Optimization features, and Circuit Breaker Protection
 """
 
 import requests
@@ -14,6 +14,7 @@ import sys
 import random
 import asyncio
 import aiohttp
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -25,8 +26,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backend_test")
 
-# Backend API URL
-BACKEND_URL = "https://225b3faa-e25a-46f6-8dd9-d92508eb5e44.preview.emergentagent.com/api"
+# Get the backend URL from environment or use default
+BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
+if not BACKEND_URL.endswith('/api'):
+    API_URL = f"{BACKEND_URL}/api"
+else:
+    API_URL = BACKEND_URL
+    BACKEND_URL = BACKEND_URL.replace('/api', '')
 
 # Test results tracking
 test_results = {
