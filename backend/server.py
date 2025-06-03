@@ -56,6 +56,7 @@ from services.db_optimization import initialize_db_optimization_service, db_opti
 
 # Routes
 from routes.auth import auth_router
+from routes import metrics
 
 # Security Middleware
 from middleware.security_validation import SecurityValidationMiddleware
