@@ -1258,8 +1258,6 @@ if __name__ == "__main__":
     # Run comprehensive tests for Production Infrastructure
     test_production_infrastructure()
     
-    # Run comprehensive tests for Database Query Optimization features
-    test_db_optimization_features()
-    
-    # Run comprehensive tests for Circuit Breaker features
-    test_circuit_breaker_features()
+    # Uncomment to run additional tests
+    # test_db_optimization_features()
+    # test_circuit_breaker_features()
