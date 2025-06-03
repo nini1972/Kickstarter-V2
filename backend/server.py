@@ -709,6 +709,9 @@ async def get_recommendations(
 # Include authentication routes
 app.include_router(auth_router, prefix="/api", tags=["Authentication"])
 
+# Include metrics routes
+app.include_router(metrics.router, prefix="/api", tags=["Metrics"])
+
 # Root endpoint
 @app.get("/")
 async def root():
